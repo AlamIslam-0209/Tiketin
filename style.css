@@ -1,0 +1,42 @@
+body {
+    margin: 0;
+    height: 100vh;
+    background-color: #f5f6fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #e8f5e9;
+    border-left: 5px solid green;
+    padding: 15px;
+
+    width: 350px;
+}
+
+.icon {
+    background-color: green;
+    color: white;
+    border-radius: 50%;
+    padding: 5px 8px;
+}
+
+.alert b {
+    color: #206b27;
+}
+
+.alert p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: #555;
+}
+
+.close {
+    margin-left: auto;
+    font-size: 20px;
+    color: green;
+}
