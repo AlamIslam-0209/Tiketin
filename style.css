@@ -1,0 +1,37 @@
+#judul-utama {
+    color: #0f172a;
+}
+
+.hhh {
+    background-color: #b2d4ea;
+}
+
+.hhh.hh-1 {
+    background-color: #2be431;
+
+}
+
+body {
+    font-family: sans-serif, Arial;
+
+}
+
+#bbb {
+    color: #475569;
+    line-height: 1.6;
+}
+
+#card {
+    width: 300px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+
+}
+
+.left {
+    display:inline-block;
+    justify-content: center;
+    align-items: center;
+    background-color: #dc0f0f;
+}
