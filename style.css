@@ -511,6 +511,9 @@ textarea { resize: vertical; }
 }
 
 @media (max-width: 560px) {
+  .navbar { flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+  .nav-links { flex-wrap: wrap; justify-content: flex-end; }
+  .nav-link { font-size: .84rem; }
   .event-filters { grid-template-columns: 1fr; }
   .page-main { padding: 42px 0 68px; }
   .panel { padding: 20px; }

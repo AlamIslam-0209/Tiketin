@@ -1,4 +1,3 @@
-/* Data demo Tiketin. Ganti modul ini dengan API saat backend tersedia. */
 (() => {
   const KEY = 'tiketinDemoV2';
   const SESSION = 'tiketinSessionV2';
@@ -12,6 +11,7 @@
       { id: 'user-1', username: 'pengunjung', password: 'user123', role: 'user', fullName: 'Pengunjung Tiketin' }
     ],
     applications: [],
+    orders: [],
     events: [
       { id: 'event-1', ownerId: 'org-1', name: 'Senja Suara Festival', date: '2026-10-12', price: 175000, slots: 120, category: 'Konser', description: 'Musik, matahari terbenam, dan suasana hangat di tepi kota.' },
       { id: 'event-2', ownerId: 'org-1', name: 'Ruang Bunyi Live', date: '2026-10-18', price: 95000, slots: 80, category: 'Konser', description: 'Panggung intim untuk suara baru dan cerita yang dekat.' },
@@ -65,6 +65,10 @@
     formatPrice: (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value),
     formatDate: (value) => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${value}T12:00:00`)),
     listEvents: () => read().events,
+    listMyOrders() {
+      const user = currentUser();
+      return user ? (read().orders || []).filter((order) => order.userId === user.id).sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt)) : [];
+    },
     listUsers: () => read().users.map(publicUser),
     listApplications: () => read().applications,
     login(username, password) {
@@ -136,6 +140,14 @@
       if (!user || user.role === 'admin') throw new Error('Login sebagai user atau organizer untuk memesan.');
       const data = read(); const event = data.events.find((item) => item.id === id);
       if (!event || !Number.isInteger(quantity) || quantity < 1 || quantity > 10 || quantity > event.slots) throw new Error('Jumlah tiket melebihi batas atau slot tersedia.');
+      const order = {
+        id: uid(), userId: user.id, eventId: event.id,
+        eventName: event.name, eventDate: event.date, category: event.category,
+        quantity, unitPrice: event.price, totalPrice: event.price * quantity,
+        purchasedAt: new Date().toISOString()
+      };
+      data.orders ||= [];
+      data.orders.push(order);
       event.slots -= quantity; save(data); return event;
     }
   };

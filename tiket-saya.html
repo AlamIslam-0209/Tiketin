@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Lihat tiket yang pernah kamu pesan di Tiketin." />
+    <title>Tiket Saya — Tiketin</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="tiket-saya.css" />
+    <script src="store.js" defer></script>
+    <script src="common.js" defer></script>
+    <script src="tiket-saya.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="navbar container" aria-label="Navigasi utama">
+        <a class="wordmark" href="index.html#home" aria-label="Tiketin, kembali ke Home">Tiketin</a>
+        <div class="nav-links">
+          <a class="nav-link" href="index.html#home">Home</a>
+          <a class="nav-link" href="index.html#tickets">Ticket</a>
+          <div class="account-slot" id="accountSlot"></div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="page-main container">
+      <div class="page-heading">
+        <p class="eyebrow">Pesananmu</p>
+        <h1>Tiket Saya.</h1>
+        <p>Semua tiket yang kamu pesan tersimpan di sini.</p>
+      </div>
+
+      <section class="my-tickets-section" aria-labelledby="upcomingTitle">
+        <div class="my-tickets-heading">
+          <h2 id="upcomingTitle">Belum dipakai</h2>
+          <span id="upcomingCount"></span>
+        </div>
+        <div class="my-tickets-list" id="upcomingList"></div>
+      </section>
+
+      <section class="my-tickets-section" aria-labelledby="historyTitle">
+        <div class="my-tickets-heading">
+          <h2 id="historyTitle">Riwayat</h2>
+          <span id="historyCount"></span>
+        </div>
+        <div class="my-tickets-list" id="historyList"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container"><p>© 2026 Tiketin. Buat momenmu jadi lebih dekat.</p></div>
+    </footer>
+  </body>
+</html>

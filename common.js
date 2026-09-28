@@ -8,6 +8,18 @@
     return;
   }
 
+  if (user.role !== 'admin') {
+    const myTicketsLink = document.createElement('a');
+    myTicketsLink.className = 'nav-link';
+    myTicketsLink.href = 'tiket-saya.html';
+    myTicketsLink.textContent = 'Tiket Saya';
+    if (location.pathname.endsWith('/tiket-saya.html')) {
+      myTicketsLink.classList.add('active');
+      myTicketsLink.setAttribute('aria-current', 'page');
+    }
+    slot.before(myTicketsLink);
+  }
+
   slot.innerHTML = `
     <button class="nav-link account-trigger" id="accountTrigger" type="button" aria-expanded="false" aria-controls="accountMenu">Akun <span aria-hidden="true">⌄</span></button>
     <div class="account-menu" id="accountMenu" hidden>
