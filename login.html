@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Login ke Tiketin untuk memesan tiket event favoritmu." />
+    <title>Login — Tiketin</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="store.js" defer></script>
+    <script src="login.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="navbar container" aria-label="Navigasi utama">
+        <a class="wordmark" href="index.html#home" aria-label="Tiketin, kembali ke Home">Tiketin</a>
+        <div class="nav-links">
+          <a class="nav-link" href="index.html#home">Home</a>
+          <a class="nav-link" href="index.html#tickets">Ticket</a>
+          <a class="nav-link active" href="login.html" aria-current="page">Login</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="login-main container">
+      <section class="login-card" aria-labelledby="loginTitle">
+        <p class="eyebrow">Selamat datang kembali</p>
+        <h1 id="loginTitle">Masuk ke Tiketin.</h1>
+        <p class="login-description">Masuk untuk melanjutkan aktivitasmu di Tiketin.</p>
+        <form id="loginForm">
+          <div class="login-field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" required />
+          </div>
+          <div class="login-field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+          </div>
+          <p class="form-error" id="loginError" role="alert"></p>
+          <button class="button button-submit" type="submit">Masuk <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="auth-switch">Belum punya akun? <a href="register.html">Daftar sebagai user</a></p>
+        <details class="demo-accounts"><summary>Coba akun demo</summary><p>Admin: <strong>admin</strong> / admin123<br />Organizer: <strong>senjasuara</strong> atau <strong>jelajah</strong> / organizer123<br />User: <strong>pengunjung</strong> / user123</p></details>
+        <a class="login-back" href="index.html#home">← Kembali ke beranda</a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>© 2026 Tiketin. Buat momenmu jadi lebih dekat.</p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dashboard admin — Tiketin</title>
+        <link rel="stylesheet" href="style.css" />
+        <script src="store.js" defer></script>
+        <script src="common.js" defer></script>
+        <script src="dashboard.js" defer></script>
+    </head>
+    <body data-dashboard="admin">
+        <header class="site-header">
+            <nav class="navbar container" aria-label="Navigasi utama">
+                <a class="wordmark" href="index.html#home">Tiketin</a>
+                <div class="nav-links">
+                    <a class="nav-link" href="index.html#home">Home</a>
+                    <a class="nav-link" href="index.html#tickets">Ticket</a>
+                    <div class="account-slot" id="accountSlot"></div>
+                </div>
+            </nav>
+        </header>
+
+        <main class="page-main container">
+            <div class="page-heading">
+                <p class="eyebrow">Ruang admin</p>
+                <h1>Kelola Tiketin.</h1>
+                <p>Tinjau calon organizer, lihat akun, dan kelola seluruh event.</p>
+            </div>
+
+            <div class="dashboard-summary" id="dashboardSummary"></div>
+
+            <section class="panel dashboard-section" aria-labelledby="applicationsTitle">
+                <div class="panel-heading">
+                    <h2 id="applicationsTitle">Pengajuan organizer</h2>
+                    <span id="applicationCount"></span>
+                </div>
+                <div class="management-list" id="applicationList"></div>
+            </section>
+
+            <section class="panel dashboard-section" aria-labelledby="usersTitle">
+                <div class="panel-heading">
+                    <h2 id="usersTitle">Daftar akun</h2>
+                    <span id="userCount"></span>
+                </div>
+                <div class="management-list" id="userList"></div>
+            </section>
+
+            <div class="dashboard-layout">
+                <section class="panel form-panel" aria-labelledby="eventFormTitle">
+                    <h2 id="eventFormTitle">Edit event</h2>
+                    <p class="muted">Pilih tombol Edit pada daftar event.</p>
+
+                    <form id="eventForm" hidden>
+                        <input type="hidden" name="eventId" />
+
+                        <div class="form-grid">
+                            <div class="full-span">
+                                <label for="name">Nama event</label>
+                                <input id="name" name="name" required />
+                            </div>
+
+                            <div>
+                                <label for="date">Tanggal</label>
+                                <input id="date" name="date" type="date" required />
+                            </div>
+
+                            <div>
+                                <label for="price">Harga tiket (Rp)</label>
+                                <input id="price" name="price" type="number" min="0" step="1" required />
+                            </div>
+
+                            <div>
+                                <label for="slots">Sisa slot tiket</label>
+                                <input id="slots" name="slots" type="number" min="0" step="1" required />
+                            </div>
+
+                            <div>
+                                <label for="category">Kategori</label>
+                                <select id="category" name="category">
+                                    <option>Konser</option>
+                                    <option>Wisata</option>
+                                    <option>Seminar</option>
+                                    <option>Lainnya</option>
+                                </select>
+                            </div>
+
+                            <div class="full-span">
+                                <label for="description">Deskripsi singkat</label>
+                                <textarea id="description" name="description" rows="3" required></textarea>
+                            </div>
+                        </div>
+
+                        <p class="form-error" id="eventError" role="alert"></p>
+
+                        <div class="form-actions">
+                            <button class="button button-primary" type="submit">Simpan perubahan</button>
+                            <button class="button button-quiet" type="button" id="cancelEdit">Batal edit</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="panel" aria-labelledby="eventsTitle">
+                    <div class="panel-heading">
+                        <h2 id="eventsTitle">Semua event</h2>
+                        <span id="eventCount"></span>
+                    </div>
+                    <div class="management-list" id="eventList"></div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="site-footer">
+            <div class="container">
+                <p>© 2026 Tiketin. Buat momenmu jadi lebih dekat.</p>
+            </div>
+        </footer>
+    </body>
+</html>

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tiketin — temukan dan pesan tiket event favoritmu." />
+    <title>Tiketin — Temukan Event Favoritmu</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="store.js" defer></script>
+    <script src="common.js" defer></script>
+    <script src="main.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js" defer></script>
+    <script src="animation.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="navbar container" aria-label="Navigasi utama">
+        <a class="wordmark" href="#home" aria-label="Tiketin, kembali ke Home">Tiketin</a>
+        <div class="nav-links">
+          <a class="nav-link active" href="#home">Home</a>
+          <a class="nav-link" href="#tickets">Ticket</a>
+          <div class="account-slot" id="accountSlot"><a class="nav-link" href="login.html">Login</a></div>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero container" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">Satu tempat untuk semua momen</p>
+          <h1>Temukan event yang bikin kamu <span>nggak sabar.</span></h1>
+          <p class="hero-description">
+            Pesan tiket konser, wisata, seminar, dan event pilihan dengan cara yang lebih simpel.
+          </p>
+          <a class="button button-primary" href="#tickets">Jelajahi tiket <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="hero-note" aria-label="Informasi singkat Tiketin">
+          <span class="hero-note-mark" aria-hidden="true">✦</span>
+          <p>Rencana seru<br /><strong>dimulai dari sini.</strong></p>
+        </div>
+      </section>
+
+      <section class="tickets-section container" id="tickets">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Pilihan untukmu</p>
+            <h2>Event pilihan minggu ini</h2>
+          </div>
+          <p class="section-intro">Pilih satu, lalu amankan tempatmu sebelum kehabisan.</p>
+        </div>
+
+        <div class="event-filters" aria-label="Cari event">
+          <div><label for="eventSearch">Cari nama event</label><input id="eventSearch" type="search" placeholder="Cari event favoritmu..." /></div>
+          <div><label for="categoryFilter">Kategori</label><select id="categoryFilter"><option value="">Semua kategori</option><option>Konser</option><option>Wisata</option><option>Seminar</option><option>Lainnya</option></select></div>
+        </div>
+
+        <div class="ticket-grid" id="ticketGrid">
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon concert" aria-hidden="true">♪</span>
+              <span class="category-label">Konser</span>
+            </div>
+            <h3>Senja Suara Festival</h3>
+            <p>Musik, matahari terbenam, dan suasana hangat di tepi kota.</p>
+            <div class="card-footer">
+              <span class="event-meta">12 Okt 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Senja Suara Festival"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon concert" aria-hidden="true">♪</span>
+              <span class="category-label">Konser</span>
+            </div>
+            <h3>Ruang Bunyi Live</h3>
+            <p>Panggung intim untuk suara baru dan cerita yang dekat.</p>
+            <div class="card-footer">
+              <span class="event-meta">18 Okt 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Ruang Bunyi Live"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon travel" aria-hidden="true">◇</span>
+              <span class="category-label">Wisata</span>
+            </div>
+            <h3>Jelajah Pulau Kecil</h3>
+            <p>Seharian menikmati laut biru, kuliner lokal, dan udara segar.</p>
+            <div class="card-footer">
+              <span class="event-meta">24 Okt 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Jelajah Pulau Kecil"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon travel" aria-hidden="true">◇</span>
+              <span class="category-label">Wisata</span>
+            </div>
+            <h3>Langkah di Kota Lama</h3>
+            <p>Tur santai mengenal sudut bersejarah dengan cerita lokal.</p>
+            <div class="card-footer">
+              <span class="event-meta">01 Nov 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Langkah di Kota Lama"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon seminar" aria-hidden="true">▦</span>
+              <span class="category-label">Seminar</span>
+            </div>
+            <h3>Ide Jadi Aksi</h3>
+            <p>Obrolan praktis untuk mengubah ide kecil menjadi langkah nyata.</p>
+            <div class="card-footer">
+              <span class="event-meta">08 Nov 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Ide Jadi Aksi"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+
+          <article class="ticket-card">
+            <div class="card-topline">
+              <span class="category-icon seminar" aria-hidden="true">▦</span>
+              <span class="category-label">Seminar</span>
+            </div>
+            <h3>Future Makers Meetup</h3>
+            <p>Bertemu, belajar, dan bertukar perspektif dengan para kreator.</p>
+            <div class="card-footer">
+              <span class="event-meta">15 Nov 2026</span>
+              <button
+                class="button button-card order-button"
+                type="button"
+                data-event="Future Makers Meetup"
+              >
+                Pesan
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>© 2026 Tiketin. Buat momenmu jadi lebih dekat.</p>
+      </div>
+    </footer>
+
+    <div class="modal-backdrop" id="orderModal" aria-hidden="true" inert>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button
+          class="modal-close"
+          id="closeModal"
+          type="button"
+          aria-label="Tutup pemesanan"
+        >
+          x
+        </button>
+        <p class="eyebrow">Pemesanan tiket</p>
+        <h2 id="modalTitle">Amankan tempatmu.</h2>
+        <p class="modal-event">Kamu akan memesan tiket untuk <strong id="selectedEvent">event pilihan</strong>.</p>
+        <p class="modal-details"><span id="selectedPrice"></span> · <span id="selectedSlots"></span></p>
+        <form id="orderForm">
+          <label for="ticketQuantity">Jumlah tiket</label>
+          <input
+            id="ticketQuantity"
+            name="ticketQuantity"
+            type="number"
+            min="1"
+            max="10"
+            value="1"
+            required
+          />
+          <p class="form-error" id="formError" role="alert"></p>
+          <button class="button button-submit" type="submit">Konfirmasi pesanan <span aria-hidden="true">→</span></button>
+          <div class="auth-warning" id="authWarning" role="alert" hidden>
+            <p>Silakan login dulu untuk melanjutkan pemesanan tiket.</p>
+            <a class="button button-primary" href="login.html">Login</a>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
