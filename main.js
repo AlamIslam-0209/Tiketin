@@ -6,9 +6,27 @@ const quantityInput = document.querySelector('#ticketQuantity');
 const formError = document.querySelector('#formError');
 const authWarning = document.querySelector('#authWarning');
 const toast = document.querySelector('#toast');
+
+const paymentStep = document.getElementById('paymentStep');
+const payEventName = document.getElementById('payEventName');
+const payQuantity = document.getElementById('payQuantity');
+const payUnitPrice = document.getElementById('payUnitPrice');
+const payTotalPrice = document.getElementById('payTotalPrice');
+const paymentMethodSelect = document.getElementById('paymentMethod');
+const proofUpload = document.getElementById('proofUpload');
+const uploadArea = document.getElementById('uploadArea');
+const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+const uploadPreview = document.getElementById('uploadPreview');
+const proofImage = document.getElementById('proofImage');
+const removeProof = document.getElementById('removeProof');
+const backToStep1 = document.getElementById('backToStep1');
+const paymentError = document.getElementById('paymentError');
+const paymentForm = document.getElementById('paymentForm');
+
 let selectedId = null;
 let lastTrigger = null;
 let toastTimer;
+let currentProofBase64 = null;
 
 
 function renderEvents() {
@@ -48,6 +66,11 @@ function openModal(id, trigger, previousQuantity = 1) {
   quantityInput.max = String(Math.min(10, event.slots));
   quantityInput.value = String(Math.min(Math.max(1, previousQuantity), 10));
   formError.textContent = ''; authWarning.hidden = true;
+
+  orderForm.hidden = false;
+  paymentStep.hidden = true;
+  currentProofBase64 = null;
+
   modal.inert = false;
   document.querySelectorAll('header, main, footer').forEach((item) => { item.inert = true; });
   modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false');
@@ -59,6 +82,11 @@ function closeModal() {
   modal.inert = true;
   document.querySelectorAll('header, main, footer').forEach((item) => { item.inert = false; });
   document.body.classList.remove('modal-open');
+
+  orderForm.hidden = false;
+  paymentStep.hidden = true;
+  currentProofBase64 = null;
+
   lastTrigger?.focus();
 }
 
@@ -67,12 +95,51 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 4200);
 }
 
+function showPaymentStep(event, quantity) {
+  orderForm.hidden = true;
+  paymentStep.hidden = false;
+
+  payEventName.textContent = event.name;
+  payQuantity.textContent = quantity + ' tiket';
+  payUnitPrice.textContent = store.formatPrice(event.price);
+  payTotalPrice.textContent = store.formatPrice(event.price * quantity);
+
+  paymentMethodSelect.value = '';
+  paymentError.textContent = '';
+  currentProofBase64 = null;
+  proofUpload.value = '';
+  uploadPlaceholder.hidden = false;
+  uploadPreview.hidden = true;
+
+  paymentMethodSelect.focus();
+}
+
+function handleProofFile(file) {
+  if (!file.type.startsWith('image/')) {
+    paymentError.textContent = 'File harus berupa gambar (JPG, PNG, dll).';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    paymentError.textContent = 'Ukuran file maksimal 2 MB.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentProofBase64 = reader.result;
+    proofImage.src = reader.result;
+    uploadPlaceholder.hidden = true;
+    uploadPreview.hidden = false;
+    paymentError.textContent = '';
+  };
+  reader.readAsDataURL(file);
+}
+
 document.querySelector('#closeModal').addEventListener('click', closeModal);
 modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
   if (event.key === 'Tab' && modal.classList.contains('is-open')) {
-    const focusables = [...modal.querySelectorAll('button:not([disabled]), input, a[href]')].filter((item) => item.offsetParent !== null);
+    const focusables = [...modal.querySelectorAll('button:not([disabled]), input:not([hidden]), select, a[href]')].filter((item) => item.offsetParent !== null);
     const first = focusables[0], last = focusables.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -93,16 +160,73 @@ orderForm.addEventListener('submit', (event) => {
     store.setPendingOrder({ eventId: selectedId, quantity });
     authWarning.querySelector('a').focus(); return;
   }
-  try { 
-    store.book(selectedId, quantity);
-    closeModal(); renderEvents();
-    showToast(`${quantity} tiket untuk ${selected.name} berhasil dipesan.`);
-  } catch (error) { formError.textContent = error.message; }
+  showPaymentStep(selected, quantity);
 });
 
+backToStep1.addEventListener('click', () => {
+  paymentStep.hidden = true;
+  orderForm.hidden = false;
+});
+
+// Upload area 
+uploadArea.addEventListener('click', () => {
+  if (!uploadPreview.hidden) return;
+  proofUpload.click();
+});
+
+// Drag & drop
+uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleProofFile(e.dataTransfer.files[0]);
+});
+
+proofUpload.addEventListener('change', () => {
+  if (proofUpload.files.length) handleProofFile(proofUpload.files[0]);
+});
+
+removeProof.addEventListener('click', (e) => {
+  e.stopPropagation();
+  currentProofBase64 = null;
+  proofUpload.value = '';
+  uploadPlaceholder.hidden = false;
+  uploadPreview.hidden = true;
+});
+
+ 
+paymentForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  paymentError.textContent = '';
+
+  if (!paymentMethodSelect.value) {
+    paymentError.textContent = 'Pilih metode pembayaran.';
+    paymentMethodSelect.focus();
+    return;
+  }
+  if (!currentProofBase64) {
+    paymentError.textContent = 'Upload bukti pembayaran terlebih dahulu.';
+    return;
+  }
+
+  const quantity = Number(quantityInput.value);
+  try {
+    store.book(selectedId, quantity, paymentMethodSelect.value, currentProofBase64);
+    closeModal();
+    renderEvents();
+    showToast(`${quantity} tiket untuk ${payEventName.textContent} berhasil dipesan.`);
+  } catch (err) {
+    paymentError.textContent = err.message;
+  }
+});
+
+// Search & filter
 document.querySelector('#eventSearch').addEventListener('input', renderEvents);
 document.querySelector('#categoryFilter').addEventListener('change', renderEvents);
 renderEvents();
+
+// Pending order from login redirect
 const pending = store.currentUser()?.role !== 'admin' ? store.takePendingOrder() : null;
 if (pending) {
   const trigger = [...grid.querySelectorAll('.order-button')].find((button) => {

@@ -8,11 +8,13 @@
   const el = (tag, className, value) => { const node = document.createElement(tag); if (className) node.className = className; if (value != null) node.textContent = value; return node; };
   const button = (label, className, action) => { const node = el('button', `button ${className}`, label); node.type = 'button'; node.addEventListener('click', action); return node; };
 
+  const METHOD_LABELS = { qris: 'QRIS', bca: 'Bank BCA', bri: 'Bank BRI', bsi: 'Bank BSI', mandiri: 'Bank Mandiri' };
+
   function renderSummary() {
     const events = store.listEvents();
     const entries = role === 'admin'
       ? [['Akun', store.listUsers().length], ['Menunggu persetujuan', store.listApplications().filter((item) => item.status === 'pending').length], ['Event tayang', events.length]]
-      : [['Event milikmu', events.filter((item) => item.ownerId === current.id).length], ['Sisa tiket', events.filter((item) => item.ownerId === current.id).reduce((sum, item) => sum + item.slots, 0)]];
+      : [['Event milikmu', events.filter((item) => item.ownerId === current.id).length], ['Sisa tiket', events.filter((item) => item.ownerId === current.id).reduce((sum, item) => sum + item.slots, 0)], ['Order masuk', store.listOrdersForOwner().length]];
     const summary = document.querySelector('#dashboardSummary'); summary.replaceChildren();
     entries.forEach(([label, value]) => { const item = el('div', 'summary-item'); item.append(el('strong', '', value), el('span', '', label)); summary.append(item); });
   }
@@ -29,8 +31,8 @@
       if (role === 'admin') text.append(el('small', '', `Pemilik: ${users.find((item) => item.id === event.ownerId)?.username || 'Tidak ditemukan'}`));
       const actions = el('div', 'row-actions');
       actions.append(button('Edit', 'button-quiet', () => editEvent(event.id)));
-      if (role === 'admin') actions.append(button('Hapus', 'button-danger', () => {
-        if (!confirm(`Hapus event “${event.name}”?`)) return;
+      if (role === 'organizer') actions.append(button('Hapus', 'button-danger', () => {
+        if (!confirm(`Yakin ingin menghapus event "${event.name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
         try { store.deleteEvent(event.id); resetForm(); render(); } catch (error) { alert(error.message); }
       }));
       row.append(text, actions); list.append(row);
@@ -95,6 +97,159 @@
     users.forEach((user) => { const row = el('div', 'management-row'); const copy = el('div', 'management-copy'); copy.append(el('h3', '', user.username), el('p', '', `${user.fullName} · ${user.organization || 'Tanpa organisasi'}`)); row.append(copy, el('span', 'status', user.role)); target.append(row); });
   }
 
-  function render() { renderSummary(); renderEvents(); if (role === 'admin') { renderApplications(); renderUsers(); } }
+  // ── Order masuk (organizer only) — filtered by event dropdown ──
+  function renderOrders() {
+    const orderList = document.getElementById('orderList');
+    const orderCountEl = document.getElementById('orderCount');
+    const filterSelect = document.getElementById('orderEventFilter');
+    if (!orderList) return;
+
+    const allOrders = store.listOrdersForOwner();
+    const users = store.listUsers();
+    const myEvents = store.listEvents().filter((e) => e.ownerId === current.id);
+
+    // Populate filter dropdown (preserve current selection)
+    const currentFilter = filterSelect.value;
+    filterSelect.innerHTML = '<option value="">Semua event</option>';
+    myEvents.forEach((evt) => {
+      const count = allOrders.filter((o) => o.eventId === evt.id).length;
+      if (count === 0) return; // skip events with no orders
+      const opt = document.createElement('option');
+      opt.value = evt.id;
+      opt.textContent = `${evt.name} (${count})`;
+      filterSelect.append(opt);
+    });
+    filterSelect.value = currentFilter; // restore selection
+
+    // Apply filter
+    const filtered = currentFilter
+      ? allOrders.filter((o) => o.eventId === currentFilter)
+      : allOrders;
+
+    orderCountEl.textContent = filtered.length + ' order';
+
+    orderList.innerHTML = '';
+    if (filtered.length === 0) {
+      orderList.append(el('p', 'muted', currentFilter ? 'Belum ada order untuk event ini.' : 'Belum ada order masuk.'));
+      return;
+    }
+
+    filtered.forEach((order) => {
+      const buyer = users.find((u) => u.id === order.userId);
+      const card = document.createElement('article');
+      card.className = 'order-card';
+
+      const statusText = order.status || 'menunggu';
+      const statusClass = 'badge-' + statusText;
+      const methodLabel = METHOD_LABELS[order.paymentMethod] || order.paymentMethod || '-';
+
+      // Header: buyer name + status badge
+      const header = el('div', 'order-header');
+      header.append(
+        el('span', 'order-buyer', buyer ? buyer.fullName || buyer.username : 'Unknown'),
+        el('span', `badge ${statusClass}`, statusText)
+      );
+      card.append(header);
+
+      // Details grid
+      const details = el('div', 'order-details');
+      const detailRows = currentFilter
+        ? [
+            ['Jumlah', order.quantity + ' tiket'],
+            ['Total', store.formatPrice(order.totalPrice)],
+            ['Metode', methodLabel],
+            ['Dipesan', new Date(order.purchasedAt).toLocaleDateString('id-ID')]
+          ]
+        : [
+            ['Event', order.eventName],
+            ['Jumlah', order.quantity + ' tiket'],
+            ['Total', store.formatPrice(order.totalPrice)],
+            ['Metode', methodLabel],
+            ['Dipesan', new Date(order.purchasedAt).toLocaleDateString('id-ID')]
+          ];
+      detailRows.forEach(([label, value]) => {
+        const row = el('div', 'order-detail');
+        row.append(el('span', 'order-detail-label', label), el('span', 'order-detail-value', value));
+        details.append(row);
+      });
+      card.append(details);
+
+      // Actions
+      const actions = el('div', 'order-actions');
+      let hasActions = false;
+
+      if (order.paymentProof) {
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'button button-quiet button-small';
+        viewBtn.textContent = 'Lihat bukti';
+        viewBtn.addEventListener('click', () => openProofModal(order.paymentProof));
+        actions.append(viewBtn);
+        hasActions = true;
+      }
+
+      if (statusText === 'menunggu') {
+        const approveBtn = document.createElement('button');
+        approveBtn.className = 'button button-primary button-small';
+        approveBtn.textContent = 'Terima';
+        approveBtn.addEventListener('click', () => {
+          store.updateOrderStatus(order.id, 'berhasil');
+          render();
+        });
+
+        const rejectBtn = document.createElement('button');
+        rejectBtn.className = 'button button-danger button-small';
+        rejectBtn.textContent = 'Tolak';
+        rejectBtn.addEventListener('click', () => {
+          if (!confirm('Yakin ingin menolak order ini?')) return;
+          store.updateOrderStatus(order.id, 'dibatalkan');
+          render();
+        });
+
+        actions.append(approveBtn, rejectBtn);
+        hasActions = true;
+      }
+
+      if (hasActions) card.append(actions);
+
+      orderList.append(card);
+    });
+  }
+
+  // Filter change listener
+  document.getElementById('orderEventFilter')?.addEventListener('change', renderOrders);
+
+  // ── Proof modal ──
+  function openProofModal(base64) {
+    const proofModal = document.getElementById('proofModal');
+    const img = document.getElementById('proofModalImage');
+    if (!proofModal || !img) return;
+    img.src = base64;
+    proofModal.inert = false;
+    proofModal.classList.add('is-open');
+    proofModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+  }
+
+  function closeProofModal() {
+    const proofModal = document.getElementById('proofModal');
+    if (!proofModal) return;
+    proofModal.classList.remove('is-open');
+    proofModal.setAttribute('aria-hidden', 'true');
+    proofModal.inert = true;
+    document.body.classList.remove('modal-open');
+  }
+
+  document.getElementById('closeProofModal')?.addEventListener('click', closeProofModal);
+  document.getElementById('proofModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'proofModal') closeProofModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const proofModal = document.getElementById('proofModal');
+      if (proofModal?.classList.contains('is-open')) closeProofModal();
+    }
+  });
+
+  function render() { renderSummary(); renderEvents(); if (role === 'admin') { renderApplications(); renderUsers(); } if (role === 'organizer') { renderOrders(); } }
   render();
 })();

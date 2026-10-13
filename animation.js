@@ -7,8 +7,5 @@ if (window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matche
     ease: 'power2.out'
   });
 
-  tl.from('judul', {
-    s
-  })
 }
 

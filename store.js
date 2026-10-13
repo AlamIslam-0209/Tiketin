@@ -1,7 +1,7 @@
 (() => {
-  const KEY = 'tiketinDemoV2';
-  const SESSION = 'tiketinSessionV2';
-  const PENDING_ORDER = 'tiketinPendingOrderV2';
+  const KEY = 'tiketin';
+  const SESSION = 'tiketinSession';
+  const PENDING_ORDER = 'tiketinPendingOrder';
 
   const seed = () => ({
     users: [
@@ -132,10 +132,14 @@
       Object.assign(event, next); save(data);
     },
     deleteEvent(id) {
-      if (currentUser()?.role !== 'admin') throw new Error('Akses ditolak.');
-      const data = read(); data.events = data.events.filter((item) => item.id !== id); save(data);
+      const me = currentUser();
+      const data = read();
+      const event = data.events.find((item) => item.id === id);
+      if (!event) throw new Error('Event tidak ditemukan.');
+      if (me?.role !== 'organizer' || event.ownerId !== me.id) throw new Error('Hanya organizer pemilik event yang dapat menghapus event.');
+      data.events = data.events.filter((item) => item.id !== id); save(data);
     },
-    book(id, quantity) {
+    book(id, quantity, paymentMethod, paymentProof) {
       const user = currentUser();
       if (!user || user.role === 'admin') throw new Error('Login sebagai user atau organizer untuk memesan.');
       const data = read(); const event = data.events.find((item) => item.id === id);
@@ -144,11 +148,28 @@
         id: uid(), userId: user.id, eventId: event.id,
         eventName: event.name, eventDate: event.date, category: event.category,
         quantity, unitPrice: event.price, totalPrice: event.price * quantity,
+        paymentMethod: paymentMethod || null,
+        paymentProof: paymentProof || null,
+        status: 'menunggu',
         purchasedAt: new Date().toISOString()
       };
       data.orders ||= [];
       data.orders.push(order);
       event.slots -= quantity; save(data); return event;
+    },
+    listOrdersForOwner() {
+      const me = currentUser();
+      if (!me) return [];
+      const data = read();
+      const myEventIds = data.events.filter((e) => e.ownerId === me.id).map((e) => e.id);
+      return data.orders.filter((o) => myEventIds.includes(o.eventId));
+    },
+    updateOrderStatus(orderId, newStatus) {
+      const data = read();
+      const order = data.orders.find((o) => o.id === orderId);
+      if (!order) throw new Error('Order tidak ditemukan.');
+      order.status = newStatus;
+      save(data);
     }
   };
 })();

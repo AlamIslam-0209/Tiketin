@@ -4,6 +4,8 @@
   if (!user) { location.replace('login.html'); return; }
   if (user.role === 'admin') { location.replace(store.homeFor(user)); return; }
 
+  const METHOD_LABELS = { qris: 'QRIS', bca: 'Bank BCA', bri: 'Bank BRI', bsi: 'Bank BSI', mandiri: 'Bank Mandiri' };
+
   const today = new Date();
   const todayKey = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
   const orders = store.listMyOrders();
@@ -23,15 +25,31 @@
     const card = element('article', 'my-ticket-card');
     const top = element('div', 'my-ticket-top');
     const category = element('span', 'my-ticket-category', order.category || 'Event');
-    const status = element('span', `my-ticket-status ${isHistory ? 'is-past' : 'is-upcoming'}`, isHistory ? 'Tanggal acara lewat' : 'Belum dipakai');
+
+    // Status badge: use order.status if available, else fallback to date-based
+    const orderStatus = order.status || 'menunggu';
+    let statusLabel, statusClass;
+    if (orderStatus === 'dibatalkan') {
+      statusLabel = 'Dibatalkan';
+      statusClass = 'badge badge-dibatalkan';
+    } else if (orderStatus === 'berhasil') {
+      statusLabel = isHistory ? 'Selesai' : 'Berhasil';
+      statusClass = 'badge badge-berhasil';
+    } else {
+      statusLabel = 'Menunggu';
+      statusClass = 'badge badge-menunggu';
+    }
+    const status = element('span', statusClass, statusLabel);
     top.append(category, status);
 
     const title = element('h3', '', order.eventName);
     const details = element('dl', 'my-ticket-details');
+    const methodLabel = METHOD_LABELS[order.paymentMethod] || order.paymentMethod || '-';
     const rows = [
       ['Tanggal acara', store.formatDate(order.eventDate)],
       ['Jumlah tiket', `${order.quantity} tiket`],
       ['Total harga', store.formatPrice(order.totalPrice)],
+      ['Metode bayar', methodLabel],
       ['Dipesan', new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(order.purchasedAt))]
     ];
     rows.forEach(([label, value]) => {

@@ -19,7 +19,9 @@
         <div class="nav-links">
           <a class="nav-link active" href="#home">Home</a>
           <a class="nav-link" href="#tickets">Ticket</a>
-          <div class="account-slot" id="accountSlot"><a class="nav-link" href="login.html">Login</a></div>
+          <div class="account-slot" id="accountSlot">
+            <a class="nav-link" href="login.html">Login</a>
+          </div>
         </div>
       </nav>
     </header>
@@ -50,8 +52,20 @@
         </div>
 
         <div class="event-filters" aria-label="Cari event">
-          <div><label for="eventSearch">Cari nama event</label><input id="eventSearch" type="search" placeholder="Cari event favoritmu..." /></div>
-          <div><label for="categoryFilter">Kategori</label><select id="categoryFilter"><option value="">Semua kategori</option><option>Konser</option><option>Wisata</option><option>Seminar</option><option>Lainnya</option></select></div>
+          <div>
+            <label for="eventSearch">Cari nama event</label>
+            <input id="eventSearch" type="search" placeholder="Cari event favoritmu..." />
+          </div>
+          <div>
+            <label for="categoryFilter">Kategori</label>
+            <select id="categoryFilter">
+              <option value="">Semua kategori</option>
+              <option>Konser</option>
+              <option>Wisata</option>
+              <option>Seminar</option>
+              <option>Lainnya</option>
+            </select>
+          </div>
         </div>
 
         <div class="ticket-grid" id="ticketGrid">
@@ -204,12 +218,66 @@
             required
           />
           <p class="form-error" id="formError" role="alert"></p>
-          <button class="button button-submit" type="submit">Konfirmasi pesanan <span aria-hidden="true">→</span></button>
+          <button class="button button-submit" type="submit">Lanjut ke pembayaran <span aria-hidden="true">→</span></button>
           <div class="auth-warning" id="authWarning" role="alert" hidden>
             <p>Silakan login dulu untuk melanjutkan pemesanan tiket.</p>
             <a class="button button-primary" href="login.html">Login</a>
           </div>
         </form>
+
+        <div id="paymentStep" hidden>
+          <h2 class="modal-title">Pembayaran</h2>
+          <div class="payment-summary">
+            <div class="summary-row">
+              <span>Event</span>
+              <span id="payEventName"></span>
+            </div>
+            <div class="summary-row">
+              <span>Jumlah tiket</span>
+              <span id="payQuantity"></span>
+            </div>
+            <div class="summary-row">
+              <span>Harga satuan</span>
+              <span id="payUnitPrice"></span>
+            </div>
+            <div class="summary-row summary-total">
+              <span>Total bayar</span>
+              <span id="payTotalPrice"></span>
+            </div>
+          </div>
+          <form id="paymentForm">
+            <div class="form-group">
+              <label for="paymentMethod">Metode pembayaran</label>
+              <select id="paymentMethod" required>
+                <option value="">— Pilih metode —</option>
+                <option value="qris">QRIS</option>
+                <option value="bca">Transfer Bank BCA</option>
+                <option value="bri">Transfer Bank BRI</option>
+                <option value="bsi">Transfer Bank BSI</option>
+                <option value="mandiri">Transfer Bank Mandiri</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="proofUpload">Bukti pembayaran</label>
+              <div class="upload-area" id="uploadArea">
+                <input type="file" id="proofUpload" accept="image/*" hidden />
+                <div id="uploadPlaceholder" class="upload-placeholder">
+                  <span class="upload-icon">📎</span>
+                  <span>Klik atau seret foto bukti pembayaran</span>
+                </div>
+                <div id="uploadPreview" class="upload-preview" hidden>
+                  <img id="proofImage" alt="Preview bukti pembayaran" />
+                  <button type="button" id="removeProof" class="button button-quiet button-small">Hapus foto</button>
+                </div>
+              </div>
+            </div>
+            <p class="form-error" id="paymentError" role="alert"></p>
+            <div class="form-actions">
+              <button type="button" class="button button-quiet" id="backToStep1">Kembali</button>
+              <button type="submit" class="button button-primary">Bayar &amp; Pesan</button>
+            </div>
+          </form>
+        </div>
       </section>
     </div>
 
