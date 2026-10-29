@@ -87,13 +87,13 @@ Seluruh checklist di bawah ini mendeskripsikan **fitur nyata yang sudah berjalan
 ---
 
 ### 🟠 Faiz — Administration & Governance Specialist (`feat/admin-faiz`)
-- [] **Dashboard Utama Admin (`admin.php`)**: Membangun panel kendali yang hanya dapat diakses oleh role `admin`, dilengkapi 3 kartu ringkasan metrik: Total Akun Terdaftar, Pengajuan Menunggu Persetujuan, dan Total Event Tayang.
-- [] **Sistem Peninjauan Pengajuan Organizer (`admin.php`)**: Menyediakan daftar seluruh calon organizer yang mendaftar beserta detail organisasi, kontak pemohon, dan spesifikasi draf event perdananya.
-- [] **Logika Keputusan Admin (`proses/application_process.php` - Action `decide`)**:
+- [x] **Dashboard Utama Admin (`admin.php`)**: Membangun panel kendali yang hanya dapat diakses oleh role `admin`, dilengkapi 3 kartu ringkasan metrik: Total Akun Terdaftar, Pengajuan Menunggu Persetujuan, dan Total Event Tayang.
+- [x] **Sistem Peninjauan Pengajuan Organizer (`admin.php`)**: Menyediakan daftar seluruh calon organizer yang mendaftar beserta detail organisasi, kontak pemohon, dan spesifikasi draf event perdananya.
+- [x] **Logika Keputusan Admin (`proses/application_process.php` - Action `decide`)**:
   - **Aksi Setujui (*Approve*)**: Menggunakan transaksi database (`beginTransaction`) untuk mengubah status pengajuan menjadi `approved`, menaikkan role user dari `user` menjadi `organizer`, memperbarui nama organisasi, dan secara otomatis langsung menerbitkan draf event pertama ke tabel `events`.
   - **Aksi Tolak (*Reject*)**: Memvalidasi input wajib alasan penolakan dan menyimpan keterangan penolakan ke database agar calon organizer dapat membaca alasannya di `apply.php`.
-- [] **Daftar & Audit Seluruh Akun Pengguna (`admin.php`)**: Menampilkan daftar seluruh user yang terdaftar di platform Tiketin beserta badge role masing-masing (`Admin`, `Organizer`, `User`) dan tanggal registrasi.
-- [] **Moderasi Event Global (`admin.php` & `proses/event_process.php`)**:
+- [x] **Daftar & Audit Seluruh Akun Pengguna (`admin.php`)**: Menampilkan daftar seluruh user yang terdaftar di platform Tiketin beserta badge role masing-masing (`Admin`, `Organizer`, `User`) dan tanggal registrasi.
+- [x] **Moderasi Event Global (`admin.php` & `proses/event_process.php`)**:
   - Menyediakan form edit event interaktif langsung di halaman admin untuk mengubah nama, jadwal, lokasi, kategori, harga, dan kuota event yang melanggar ketentuan.
   - Menyediakan tombol hapus event dengan konfirmasi dialog untuk menjaga ketertiban konten di platform Tiketin.
 
