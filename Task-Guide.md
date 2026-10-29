@@ -65,13 +65,13 @@ Seluruh checklist di bawah ini mendeskripsikan **fitur nyata yang sudah berjalan
 ---
 
 ### 🟣 Assyifa — Organizer & Application Specialist (`feat/organizer-assyifa`)
-- [] **Formulir Pengajuan Organizer (`apply.php`)**: Membangun antarmuka pendaftaran calon organizer yang menginput identitas diri, nama organisasi, nomor kontak, serta form draf event pertama yang ingin diselenggarakan.
-- [] **Status Tracking Pengajuan**: Menyediakan notifikasi status peninjauan di `apply.php` (menampilkan box kuning jika pengajuan berstatus *pending*, dan box merah disertai alasan jika berstatus *rejected* dengan opsi pengajuan ulang).
-- [] **Backend Pengajuan (`proses/application_process.php` - Action `apply`)**: Memvalidasi data pendaftaran, mencegah pengajuan ganda saat masih *pending*, dan menyimpan berkas ke tabel `applications`.
-- [] **Dashboard Organizer (`organizer.php`)**: Membangun antarmuka dashboard khusus role `organizer` yang menampilkan ringkasan jumlah event aktif, total tiket terjual, dan sisa slot tiket.
-- [] **CRUD Event Organizer (`proses/event_process.php`)**: Mengimplementasikan aksi `create`, `update`, dan `delete` event yang hanya dapat dikelola oleh pemilik event tersebut (`owner_id = currentUser.id`).
-- [] **Manajemen Rekening Pembayaran (`proses/payment_process.php`)**: Membangun fitur tambah dan hapus nomor rekening bank / QRIS milik organizer pada tabel `payment` agar muncul otomatis sebagai opsi pembayaran saat pembeli memesan tiket.
-- [] **Verifikasi Order Masuk**: Mengembangkan tabel riwayat pesanan tiket masuk di dashboard organizer untuk memantau nama pembeli, jumlah tiket, dan memperbarui status order.
+- [x] **Formulir Pengajuan Organizer (`apply.php`)**: Membangun antarmuka pendaftaran calon organizer yang menginput identitas diri, nama organisasi, nomor kontak, serta form draf event pertama yang ingin diselenggarakan.
+- [x] **Status Tracking Pengajuan**: Menyediakan notifikasi status peninjauan di `apply.php` (menampilkan box kuning jika pengajuan berstatus *pending*, dan box merah disertai alasan jika berstatus *rejected* dengan opsi pengajuan ulang).
+- [x] **Backend Pengajuan (`proses/application_process.php` - Action `apply`)**: Memvalidasi data pendaftaran, mencegah pengajuan ganda saat masih *pending*, dan menyimpan berkas ke tabel `applications`.
+- [x] **Dashboard Organizer (`organizer.php`)**: Membangun antarmuka dashboard khusus role `organizer` yang menampilkan ringkasan jumlah event aktif, total tiket terjual, dan sisa slot tiket.
+- [x] **CRUD Event Organizer (`proses/event_process.php`)**: Mengimplementasikan aksi `create`, `update`, dan `delete` event yang hanya dapat dikelola oleh pemilik event tersebut (`owner_id = currentUser.id`).
+- [x] **Manajemen Rekening Pembayaran (`proses/payment_process.php`)**: Membangun fitur tambah dan hapus nomor rekening bank / QRIS milik organizer pada tabel `payment` agar muncul otomatis sebagai opsi pembayaran saat pembeli memesan tiket.
+- [x] **Verifikasi Order Masuk**: Mengembangkan tabel riwayat pesanan tiket masuk di dashboard organizer untuk memantau nama pembeli, jumlah tiket, dan memperbarui status order.
 
 ---
 
