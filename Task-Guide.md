@@ -76,13 +76,13 @@ Seluruh checklist di bawah ini mendeskripsikan **fitur nyata yang sudah berjalan
 ---
 
 ### 🟢 Alif — Customer Experience & Ticketing Specialist (`feat/ticketing-alif`)
-- [] **Antarmuka Beranda & Navbar Publik (`index.php`, `includes/header.php`, `includes/footer.php`)**: Merancang hero section *"Satu tempat untuk semua momen"*, navigasi interaktif, dan tautan login/register dinamis sesuai status sesi user.
-- [] **Katalog & Kartu Event (`index.php`)**: Menampilkan daftar event dari database secara urut tanggal, lengkap dengan nama organizer, tanggal, jam, lokasi, badge kategori, slot tiket tersisa, dan tombol "Pesan Tiket".
-- [] **Modal Pemesanan & Alur Checkout (`index.php`)**: Membangun pop-up modal pemesanan tiket dengan batasan 1–10 tiket per transaksi, kalkulasi subtotal harga, serta pilihan metode transfer bank milik organizer dari tabel `payment` maupun QRIS.
-- [] **Upload Bukti Pembayaran (`proses/order_process.php`)**: Membangun validasi upload file bukti transfer pembayaran (pengecekan ekstensi gambar JPG/PNG/WEBP, verifikasi MIME type, batasan ukuran 5 MB, dan penyimpanan unik ke direktori `uploads/proofs/`).
-- [] **Penerbitan Kode Tiket Unik (`proses/order_process.php`)**: Mengembangkan generator kode tiket otomatis berformat unik (`TKT-YYYYMM-XXXX`) pada tabel `tickets` serta pengurangan kuota slot event secara atomik.
-- [] **Dashboard Tiket Saya (`tiket-saya.php`)**: Membangun halaman riwayat pesanan pengguna yang membagi tiket ke dalam dua tab: **Tiket Mendatang** dan **Riwayat Transaksi**.
-- [] **Tampilan Kartu Tiket & Modal Bukti Transfer (`tiket-saya.php`)**: Menampilkan detail event, kode tiket yang terbit, badge status transaksi (*Confirmed*, *Pending*, *Rejected*), dan modal interaktif untuk melihat screenshot bukti transfer yang telah diunggah.
+- [x] **Antarmuka Beranda & Navbar Publik (`index.php`, `includes/header.php`, `includes/footer.php`)**: Merancang hero section *"Satu tempat untuk semua momen"*, navigasi interaktif, dan tautan login/register dinamis sesuai status sesi user.
+- [x] **Katalog & Kartu Event (`index.php`)**: Menampilkan daftar event dari database secara urut tanggal, lengkap dengan nama organizer, tanggal, jam, lokasi, badge kategori, slot tiket tersisa, dan tombol "Pesan Tiket".
+- [x] **Modal Pemesanan & Alur Checkout (`index.php`)**: Membangun pop-up modal pemesanan tiket dengan batasan 1–10 tiket per transaksi, kalkulasi subtotal harga, serta pilihan metode transfer bank milik organizer dari tabel `payment` maupun QRIS.
+- [x] **Upload Bukti Pembayaran (`proses/order_process.php`)**: Membangun validasi upload file bukti transfer pembayaran (pengecekan ekstensi gambar JPG/PNG/WEBP, verifikasi MIME type, batasan ukuran 5 MB, dan penyimpanan unik ke direktori `uploads/proofs/`).
+- [x] **Penerbitan Kode Tiket Unik (`proses/order_process.php`)**: Mengembangkan generator kode tiket otomatis berformat unik (`TKT-YYYYMM-XXXX`) pada tabel `tickets` serta pengurangan kuota slot event secara atomik.
+- [x] **Dashboard Tiket Saya (`tiket-saya.php`)**: Membangun halaman riwayat pesanan pengguna yang membagi tiket ke dalam dua tab: **Tiket Mendatang** dan **Riwayat Transaksi**.
+- [x] **Tampilan Kartu Tiket & Modal Bukti Transfer (`tiket-saya.php`)**: Menampilkan detail event, kode tiket yang terbit, badge status transaksi (*Confirmed*, *Pending*, *Rejected*), dan modal interaktif untuk melihat screenshot bukti transfer yang telah diunggah.
 
 ---
 
