@@ -55,12 +55,12 @@ Tiketin/
 Seluruh checklist di bawah ini mendeskripsikan **fitur nyata yang sudah berjalan pada kode saat ini**:
 
 ### 🔵 Alam — Project Lead & Core Architect (`feat/core-architecture-alam`)
-- [] **Arsitektur Database**: Merancang skema tabel MySQL lengkap (`users`, `events`, `orders`, `tickets`, `applications`, `payment`) dengan relasi foreign key pada `database.sql`.
-- [] **Koneksi Database PDO**: Membangun `config/database.php` menggunakan PDO dengan error mode exception dan wrapper function `get_db()`.
-- [] **Sistem Autentikasi**: Membangun alur masuk dan daftar akun pada `login.php`, `register.php`, dan `proses/auth_process.php` yang mendukung case-insensitive username (`LOWER(username)`).
-- [] **Middleware & Role Restriction**: Membangun mekanisme proteksi akses di `includes/auth_check.php` dengan fungsi `require_login()`, `require_role('admin')`, `require_role('organizer')`, dan `current_user()`.
-- [] **Global Helper & Session Flash**: Mengembangkan sistem notifikasi pesan di `includes/functions.php` (`set_flash()`, `get_flash()`) serta fungsi utilitas `format_rupiah()` dan `format_tanggal_id()`.
-- [] **Pembersihan Sesi**: Mengimplementasikan `logout.php` yang menghapus sesi secara aman dan mengarahkan kembali ke beranda.
+- [x] **Arsitektur Database**: Merancang skema tabel MySQL lengkap (`users`, `events`, `orders`, `tickets`, `applications`, `payment`) dengan relasi foreign key pada `database.sql`.
+- [x] **Koneksi Database PDO**: Membangun `config/database.php` menggunakan PDO dengan error mode exception dan wrapper function `get_db()`.
+- [x] **Sistem Autentikasi**: Membangun alur masuk dan daftar akun pada `login.php`, `register.php`, dan `proses/auth_process.php` yang mendukung case-insensitive username (`LOWER(username)`).
+- [x] **Middleware & Role Restriction**: Membangun mekanisme proteksi akses di `includes/auth_check.php` dengan fungsi `require_login()`, `require_role('admin')`, `require_role('organizer')`, dan `current_user()`.
+- [x] **Global Helper & Session Flash**: Mengembangkan sistem notifikasi pesan di `includes/functions.php` (`set_flash()`, `get_flash()`) serta fungsi utilitas `format_rupiah()` dan `format_tanggal_id()`.
+- [x] **Pembersihan Sesi**: Mengimplementasikan `logout.php` yang menghapus sesi secara aman dan mengarahkan kembali ke beranda.
 
 ---
 
