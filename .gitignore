@@ -1,13 +1,13 @@
-doc/
-
-.env
-.env.local
-.env.*.local
-!.env.example
-
 .DS_Store
 */.DS_Store
 **/.DS_Store
 
+.idea/
+*.iml
+.vscode/
+
 uploads/proofs/*
 !uploads/proofs/.gitkeep
+
+target/*
+!target/tiketin-desktop-2.0.0-jar-with-dependencies.jar
