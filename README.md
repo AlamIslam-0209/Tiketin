@@ -21,6 +21,7 @@ Aplikasi desktop pemesanan dan pengelolaan tiket event berbasis **Java 17 (Swing
 ```bash
 ./run.sh
 ```
+khusus macOS bisa klik 2 kali run.command
 
 ### Windows
 Klik dua kali `run.bat` atau jalankan lewat CMD/PowerShell:

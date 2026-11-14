@@ -7,6 +7,8 @@ public class User {
     private String role;
     private String fullName;
     private String organization;
+    private String bio;
+    private String avatarPath;
     private String createdAt;
 
     public User() {}
@@ -67,6 +69,22 @@ public class User {
 
     public void setOrganization(String organization) {
         this.organization = organization;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getAvatarPath() {
+        return avatarPath;
+    }
+
+    public void setAvatarPath(String avatarPath) {
+        this.avatarPath = avatarPath;
     }
 
     public String getCreatedAt() {

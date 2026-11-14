@@ -14,6 +14,7 @@ public class Event {
     private String createdAt;
     private String ownerName;
     private String ownerOrg;
+    private String imagePath;
 
     public Event() {}
 
@@ -137,5 +138,13 @@ public class Event {
 
     public void setOwnerOrg(String ownerOrg) {
         this.ownerOrg = ownerOrg;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }

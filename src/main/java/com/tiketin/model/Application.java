@@ -17,6 +17,7 @@ public class Application {
     private String status;
     private String reason;
     private String createdAt;
+    private String imagePath;
 
     public Application() {}
 
@@ -168,5 +169,13 @@ public class Application {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }

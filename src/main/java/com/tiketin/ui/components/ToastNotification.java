@@ -1,133 +1,149 @@
 package com.tiketin.ui.components;
 
+import com.tiketin.ui.MainFrame;
 import com.tiketin.ui.theme.TiketinTheme;
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
+import javafx.animation.SequentialTransition;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Label;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.stage.Window;
+import javafx.util.Duration;
 
-import javax.swing.*;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import java.awt.*;
+public class ToastNotification {
 
-/**
- * Floating top-right toast banner with vector SVG icons.
- */
-public final class ToastNotification {
+    private static final String TOAST_TRAY_KEY = "tiketin-toast-tray";
 
-    public enum Type {
-        SUCCESS,
-        ERROR,
-        INFO
+    public static void info(Object owner, String message) {
+        show(owner, message, "info", TiketinTheme.ACCENT, Color.web("#FFF0EB"));
     }
 
-    private ToastNotification() {}
-
-    public static void success(Component parent, String message) {
-        show(parent, message, Type.SUCCESS);
+    public static void success(Object owner, String message) {
+        show(owner, message, "check", TiketinTheme.SUCCESS_FG, TiketinTheme.SUCCESS_BG);
     }
 
-    public static void error(Component parent, String message) {
-        show(parent, message, Type.ERROR);
+    public static void error(Object owner, String message) {
+        show(owner, message, "alert", TiketinTheme.DANGER_FG, TiketinTheme.DANGER_BG);
     }
 
-    public static void info(Component parent, String message) {
-        show(parent, message, Type.INFO);
-    }
+    private static void show(Object owner, String message, String iconName, Color accentFg, Color badgeBg) {
+        javafx.application.Platform.runLater(() -> {
+            Pane overlayPane = resolveOverlayPane(owner);
+            if (overlayPane == null) {
+                System.out.println("Toast [" + iconName + "]: " + message);
+                return;
+            }
 
-    public static void show(Component parent, String message, Type type) {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            SwingUtilities.invokeLater(() -> show(parent, message, type));
-            return;
-        }
+            VBox tray = getOrCreateTray(overlayPane);
 
-        Window owner = parent instanceof Window
-                ? (Window) parent
-                : (parent != null ? SwingUtilities.getWindowAncestor(parent) : null);
+            HBox toastCard = new HBox(10);
+            toastCard.setAlignment(Pos.CENTER_LEFT);
+            toastCard.setPadding(new Insets(10, 14, 10, 12));
+            toastCard.setMinWidth(220);
+            toastCard.setMaxWidth(340);
+            // Lock height strictly to content so StackPane never stretches the toast vertically
+            toastCard.setMinHeight(Region.USE_PREF_SIZE);
+            toastCard.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            toastCard.setMaxHeight(Region.USE_PREF_SIZE);
+            toastCard.setStyle(
+                "-fx-background-color: #FFFFFF;" +
+                "-fx-border-color: #CFD4CE;" +
+                "-fx-border-width: 1px;" +
+                "-fx-background-radius: 10px;" +
+                "-fx-border-radius: 10px;" +
+                "-fx-effect: dropshadow(three-pass-box, rgba(32,37,42,0.14), 16, 0, 0, 6);"
+            );
 
-        JWindow window = new JWindow(owner);
+            Node icon = TiketinTheme.getIcon(iconName, 14, accentFg);
+            StackPane iconPill = new StackPane(icon);
+            iconPill.setMinSize(26, 26);
+            iconPill.setPrefSize(26, 26);
+            iconPill.setMaxSize(26, 26);
+            iconPill.setStyle("-fx-background-color: " + TiketinTheme.toHex(badgeBg) + "; -fx-background-radius: 7px;");
 
-        Color bg;
-        Color border;
-        Color fg;
-        String iconName;
+            Label msgLabel = new Label(message != null ? message : "");
+            msgLabel.setFont(TiketinTheme.fontBold(12.5));
+            msgLabel.setStyle("-fx-text-fill: #20252A;");
+            msgLabel.setWrapText(true);
+            msgLabel.setMaxWidth(276);
 
-        switch (type) {
-            case SUCCESS:
-                bg = TiketinTheme.SUCCESS_BG;
-                border = TiketinTheme.SUCCESS_FG;
-                fg = new Color(0x14, 0x53, 0x2D);
-                iconName = "check";
-                break;
-            case ERROR:
-                bg = TiketinTheme.DANGER_BG;
-                border = TiketinTheme.DANGER_FG;
-                fg = new Color(0x7F, 0x1D, 0x1D);
-                iconName = "alert";
-                break;
-            case INFO:
-            default:
-                bg = TiketinTheme.BG_SURFACE;
-                border = TiketinTheme.BORDER_STRONG;
-                fg = TiketinTheme.TEXT_PRIMARY;
-                iconName = "alert";
-                break;
-        }
+            toastCard.getChildren().addAll(iconPill, msgLabel);
+            tray.getChildren().add(toastCard);
 
-        JPanel panel = new JPanel(new BorderLayout(10, 0));
-        panel.setBackground(bg);
-        panel.setBorder(new CompoundBorder(
-                new LineBorder(border, 1, true),
-                new EmptyBorder(10, 14, 10, 12)
-        ));
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(180), toastCard);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
 
-        JLabel iconLabel = new JLabel(TiketinTheme.getIcon(iconName, 16, border));
-        panel.add(iconLabel, BorderLayout.WEST);
+            PauseTransition stay = new PauseTransition(Duration.seconds(3.0));
 
-        JLabel textLabel = new JLabel(message);
-        textLabel.setFont(TiketinTheme.fontBold(12));
-        textLabel.setForeground(fg);
-        panel.add(textLabel, BorderLayout.CENTER);
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(220), toastCard);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(e -> tray.getChildren().remove(toastCard));
 
-        JButton closeBtn = new JButton(TiketinTheme.getIcon("close", 14, TiketinTheme.TEXT_MUTED));
-        closeBtn.setContentAreaFilled(false);
-        closeBtn.setBorderPainted(false);
-        closeBtn.setFocusPainted(false);
-        closeBtn.setBorder(new EmptyBorder(2, 4, 2, 2));
-        closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        closeBtn.setToolTipText("Tutup notifikasi");
-        panel.add(closeBtn, BorderLayout.EAST);
-
-        window.getContentPane().add(panel);
-        window.pack();
-
-        int toastWidth = window.getWidth();
-        int x;
-        int y;
-
-        if (owner != null && owner.isShowing()) {
-            Point loc = owner.getLocationOnScreen();
-            x = loc.x + owner.getWidth() - toastWidth - 20;
-            y = loc.y + 42;
-        } else {
-            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-            x = screen.width - toastWidth - 24;
-            y = 40;
-        }
-
-        window.setLocation(x, y);
-        window.setAlwaysOnTop(true);
-        window.setVisible(true);
-
-        Timer timer = new Timer(3200, e -> {
-            window.setVisible(false);
-            window.dispose();
+            SequentialTransition seq = new SequentialTransition(fadeIn, stay, fadeOut);
+            seq.play();
         });
-        timer.setRepeats(false);
-        timer.start();
+    }
 
-        closeBtn.addActionListener(e -> {
-            timer.stop();
-            window.setVisible(false);
-            window.dispose();
-        });
+    private static Pane resolveOverlayPane(Object owner) {
+        if (owner instanceof MainFrame) {
+            return ((MainFrame) owner).getOverlayPane();
+        }
+        if (owner instanceof Node) {
+            Node n = (Node) owner;
+            while (n != null) {
+                if (n instanceof MainFrame) {
+                    return ((MainFrame) n).getOverlayPane();
+                }
+                n = n.getParent();
+            }
+            if (((Node) owner).getScene() != null && ((Node) owner).getScene().getRoot() instanceof Pane) {
+                return (Pane) ((Node) owner).getScene().getRoot();
+            }
+        }
+        if (owner instanceof Pane) {
+            return (Pane) owner;
+        }
+        if (owner instanceof Window) {
+            Window w = (Window) owner;
+            if (w.getScene() != null && w.getScene().getRoot() instanceof Pane) {
+                return (Pane) w.getScene().getRoot();
+            }
+        }
+        for (Window window : Window.getWindows()) {
+            if (window.isShowing() && window.getScene() != null && window.getScene().getRoot() instanceof StackPane) {
+                return (Pane) window.getScene().getRoot();
+            }
+        }
+        return null;
+    }
+
+    private static VBox getOrCreateTray(Pane overlayPane) {
+        for (Node child : overlayPane.getChildren()) {
+            if (TOAST_TRAY_KEY.equals(child.getUserData()) && child instanceof VBox) {
+                return (VBox) child;
+            }
+        }
+        VBox tray = new VBox(8);
+        tray.setUserData(TOAST_TRAY_KEY);
+        tray.setAlignment(Pos.BOTTOM_RIGHT);
+        tray.setMouseTransparent(true);
+        tray.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        tray.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        if (overlayPane instanceof StackPane) {
+            StackPane.setAlignment(tray, Pos.BOTTOM_RIGHT);
+            StackPane.setMargin(tray, new Insets(0, 22, 22, 0));
+        }
+        overlayPane.getChildren().add(tray);
+        return tray;
     }
 }

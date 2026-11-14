@@ -1,403 +1,282 @@
 package com.tiketin.ui.theme;
 
-import com.formdev.flatlaf.FlatLightLaf;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
+import com.tiketin.ui.components.AnimatedButton;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 
-import javax.swing.*;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
-/**
- * Centralized Swiss-minimalist design system for Tiketin Desktop v2.
- */
-public final class TiketinTheme {
+public class TiketinTheme {
 
-    // Surface & Text Tokens
-    public static final Color BG_APP = new Color(0xF7, 0xF7, 0xF5);
-    public static final Color BG_SURFACE = new Color(0xFF, 0xFF, 0xFF);
-    public static final Color BG_SUBTLE = new Color(0xF1, 0xF1, 0xEE);
+    public static final Color BG_APP = Color.web("#F7F8F6");
+    public static final Color BG_SURFACE = Color.web("#FFFFFF");
+    public static final Color BG_SUBTLE = Color.web("#F3F1ED");
+    public static final Color BG_BEZEL = Color.web("#F7F8F6");
+    public static final Color BG_SIDEBAR = Color.web("#F4F1EC");
 
-    public static final Color TEXT_PRIMARY = new Color(0x18, 0x18, 0x1B);
-    public static final Color TEXT_SECONDARY = new Color(0x52, 0x52, 0x5B);
-    public static final Color TEXT_MUTED = new Color(0x71, 0x71, 0x7A);
+    public static final Color TEXT_PRIMARY = Color.web("#20252A");
+    public static final Color TEXT_SECONDARY = Color.web("#525A62");
+    public static final Color TEXT_MUTED = Color.web("#687078");
 
-    public static final Color BORDER = new Color(0xE4, 0xE4, 0xE0);
-    public static final Color BORDER_STRONG = new Color(0xD4, 0xD4, 0xCE);
+    public static final Color BORDER = Color.web("#E3E6E2");
+    public static final Color BORDER_STRONG = Color.web("#CFD4CE");
 
-    // Brand Accent (Terracotta-Coral, WCAG AA >= 4.5:1 on white text)
-    public static final Color ACCENT = new Color(0xC2, 0x41, 0x2D);
-    public static final Color ACCENT_HOVER = new Color(0x9A, 0x34, 0x12);
-    public static final Color ACCENT_SOFT = new Color(0xFF, 0xF3, 0xEF);
-    public static final Color ACCENT_TEXT = new Color(0x9A, 0x34, 0x12);
+    public static final Color ACCENT = Color.web("#E06338");
+    public static final Color ACCENT_HOVER = Color.web("#C85229");
+    public static final Color ACCENT_SOFT = Color.web("#FFF0EB");
+    public static final Color ACCENT_TEXT = Color.web("#FFFFFF");
 
-    // Semantic Status Tokens
-    public static final Color SUCCESS_FG = new Color(0x15, 0x80, 0x3D);
-    public static final Color SUCCESS_BG = new Color(0xDC, 0xFC, 0xE7);
-    public static final Color WARNING_FG = new Color(0xA1, 0x62, 0x07);
-    public static final Color WARNING_BG = new Color(0xFE, 0xF9, 0xC3);
-    public static final Color DANGER_FG = new Color(0xB9, 0x1C, 0x1C);
-    public static final Color DANGER_BG = new Color(0xFE, 0xE2, 0xE2);
-    public static final Color NEUTRAL_FG = new Color(0x3F, 0x3F, 0x46);
-    public static final Color NEUTRAL_BG = new Color(0xF4, 0xF4, 0xF5);
+    public static final Color SUCCESS_FG = Color.web("#15803D");
+    public static final Color SUCCESS_BG = Color.web("#DCFCE7");
+    public static final Color WARNING_FG = Color.web("#B45309");
+    public static final Color WARNING_BG = Color.web("#FEF3C7");
+    public static final Color DANGER_FG = Color.web("#B91C1C");
+    public static final Color DANGER_BG = Color.web("#FEE2E2");
+    public static final Color NEUTRAL_FG = Color.web("#475569");
+    public static final Color NEUTRAL_BG = Color.web("#F1F5F9");
 
-    private static final String SANS_FAMILY = resolveFontFamily(
-            new String[]{"Inter", ".AppleSystemUIFont", "SF Pro Text", "Segoe UI"},
-            Font.SANS_SERIF
-    );
-    private static final String MONO_FAMILY = resolveFontFamily(
-            new String[]{"JetBrains Mono", "SF Mono", "Menlo", "Consolas"},
-            Font.MONOSPACED
-    );
+    private static String primaryFont = "System";
+    private static String monoFont = "Monospaced";
 
-    private TiketinTheme() {}
-
-    private static String resolveFontFamily(String[] preferred, String fallback) {
+    static {
         try {
-            String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-            Set<String> set = new HashSet<>(Arrays.asList(available));
-            for (String candidate : preferred) {
-                if (set.contains(candidate)) {
-                    return candidate;
-                }
+            var families = Font.getFamilies();
+            // Always use JavaFX logical "System" so CSS (-fx-font-family: "System")
+            // and Java Font instances resolve identically without hover font shifts.
+            primaryFont = "System";
+
+            if (families.contains("JetBrains Mono")) {
+                monoFont = "JetBrains Mono";
+            } else if (families.contains("SF Mono")) {
+                monoFont = "SF Mono";
+            } else if (families.contains("Consolas")) {
+                monoFont = "Consolas";
             }
-        } catch (Exception ignored) {}
-        return fallback;
-    }
-
-    public static void setup() {
-        FlatLightLaf.setup();
-
-        UIManager.put("defaultFont", fontRegular(13));
-        UIManager.put("Component.accentColor", ACCENT);
-        UIManager.put("Component.focusColor", new Color(0xC2, 0x41, 0x2D, 70));
-        UIManager.put("Component.borderColor", BORDER_STRONG);
-        UIManager.put("Component.arc", 8);
-        UIManager.put("Button.arc", 8);
-        UIManager.put("TextComponent.arc", 8);
-
-        UIManager.put("Panel.background", BG_APP);
-        UIManager.put("ScrollPane.background", BG_APP);
-        UIManager.put("ScrollBar.thumbArc", 999);
-        UIManager.put("ScrollBar.width", 10);
-        UIManager.put("ScrollBar.showButtons", false);
-
-        // Clean underlined tabs
-        UIManager.put("TabbedPane.tabType", "underlined");
-        UIManager.put("TabbedPane.tabHeight", 38);
-        UIManager.put("TabbedPane.selectedForeground", TEXT_PRIMARY);
-        UIManager.put("TabbedPane.foreground", TEXT_MUTED);
-        UIManager.put("TabbedPane.underlineColor", ACCENT);
-        UIManager.put("TabbedPane.underlineHeight", 2);
-        UIManager.put("TabbedPane.contentSeparatorColor", BORDER);
-        UIManager.put("TabbedPane.showTabSeparators", false);
-        UIManager.put("TabbedPane.hoverColor", BG_SUBTLE);
-
-        // Clean horizontal-only table rhythm
-        UIManager.put("Table.rowHeight", 38);
-        UIManager.put("Table.showHorizontalLines", true);
-        UIManager.put("Table.showVerticalLines", false);
-        UIManager.put("Table.gridColor", BORDER);
-        UIManager.put("Table.background", BG_SURFACE);
-        UIManager.put("Table.alternateRowColor", BG_SURFACE);
-        UIManager.put("Table.selectionBackground", ACCENT_SOFT);
-        UIManager.put("Table.selectionForeground", TEXT_PRIMARY);
-        UIManager.put("TableHeader.background", BG_SUBTLE);
-        UIManager.put("TableHeader.foreground", TEXT_SECONDARY);
-        UIManager.put("TableHeader.separatorColor", BORDER);
-        UIManager.put("TableHeader.bottomSeparatorColor", BORDER);
-        UIManager.put("TableHeader.height", 36);
-    }
-
-    public static Font fontRegular(int size) {
-        return new Font(SANS_FAMILY, Font.PLAIN, size);
-    }
-
-    public static Font fontBold(int size) {
-        return new Font(SANS_FAMILY, Font.BOLD, size);
-    }
-
-    public static Font fontMono(int size, int style) {
-        return new Font(MONO_FAMILY, style, size);
-    }
-
-    public static Icon getIcon(String name, int size, Color color) {
-        try {
-            FlatSVGIcon icon = new FlatSVGIcon("icons/" + name + ".svg", size, size);
-            if (!icon.hasFound()) {
-                return null;
-            }
-            if (color != null) {
-                icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> color));
-            }
-            return icon;
         } catch (Exception e) {
-            return null;
+            // Fallback to defaults
         }
     }
 
-    /**
-     * Panel that tracks JScrollPane viewport width so children wrap instead of overflowing horizontally.
-     */
-    public static JPanel createScrollableVerticalPanel() {
-        return new ScrollableVerticalPanel();
+    public static String toHex(Color color) {
+        return String.format("#%02X%02X%02X",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 
-    private static final class ScrollableVerticalPanel extends JPanel implements Scrollable {
-        @Override
-        public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 16;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return 64;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
+    public static Font fontRegular(double size) {
+        return Font.font(primaryFont, size);
     }
 
-    public static JButton createPrimaryButton(String text) {
-        return createPrimaryButton(text, null);
+    public static Font fontBold(double size) {
+        return Font.font(primaryFont, javafx.scene.text.FontWeight.BOLD, size);
     }
 
-    public static JButton createPrimaryButton(String text, String iconName) {
-        JButton btn = new JButton(text);
-        btn.setFont(fontBold(13));
-        btn.setBackground(ACCENT);
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new EmptyBorder(8, 16, 8, 16));
-        if (iconName != null) {
-            btn.setIcon(getIcon(iconName, 15, Color.WHITE));
-            btn.setIconTextGap(8);
-        }
-        installHover(btn, ACCENT, ACCENT_HOVER);
+    public static Font fontMono(double size, boolean bold) {
+        return Font.font(monoFont, bold ? javafx.scene.text.FontWeight.BOLD : javafx.scene.text.FontWeight.NORMAL, size);
+    }
+
+    public static Node getIcon(String name, double size, Color color) {
+        return TiketinIcons.getIcon(name, size, color);
+    }
+
+    public static VBox createCardPanel() {
+        return createCardPanel(18, 18);
+    }
+
+    public static VBox createCardPanel(double hPad, double vPad) {
+        VBox box = new VBox();
+        box.getStyleClass().add("card-surface");
+        box.setPadding(new Insets(vPad, hPad, vPad, hPad));
+        return box;
+    }
+
+    public static StackPane createDoubleBezelCard(Region innerContent, double outerPad, double innerPad) {
+        StackPane card = new StackPane(innerContent);
+        card.getStyleClass().add("bezel-inner");
+        card.setPadding(new Insets(innerPad));
+        return card;
+    }
+
+    public static AnimatedButton createPrimaryButton(String text) {
+        return new AnimatedButton(text, "arrow-right");
+    }
+
+    public static AnimatedButton createPrimaryButton(String text, String iconName) {
+        return new AnimatedButton(text, iconName);
+    }
+
+    public static AnimatedButton createSecondaryButton(String text) {
+        AnimatedButton btn = new AnimatedButton(text, "");
+        btn.getStyleClass().setAll("btn-secondary");
         return btn;
     }
 
-    public static JButton createSecondaryButton(String text) {
-        return createSecondaryButton(text, null);
-    }
-
-    public static JButton createSecondaryButton(String text, String iconName) {
-        JButton btn = new JButton(text);
-        btn.setFont(fontBold(13));
-        btn.setBackground(BG_SURFACE);
-        btn.setForeground(TEXT_PRIMARY);
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new CompoundBorder(
-                new LineBorder(BORDER_STRONG, 1, true),
-                new EmptyBorder(7, 14, 7, 14)
-        ));
-        if (iconName != null) {
-            btn.setIcon(getIcon(iconName, 15, TEXT_SECONDARY));
-            btn.setIconTextGap(8);
-        }
-        installHover(btn, BG_SURFACE, BG_SUBTLE);
+    public static AnimatedButton createSecondaryButton(String text, String iconName) {
+        AnimatedButton btn = new AnimatedButton(text, iconName);
+        btn.getStyleClass().setAll("btn-secondary");
         return btn;
     }
 
-    public static JButton createDangerButton(String text) {
-        return createDangerButton(text, null);
-    }
-
-    public static JButton createDangerButton(String text, String iconName) {
-        JButton btn = new JButton(text);
-        btn.setFont(fontBold(13));
-        btn.setBackground(BG_SURFACE);
-        btn.setForeground(DANGER_FG);
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new CompoundBorder(
-                new LineBorder(new Color(0xFC, 0xA5, 0xA5), 1, true),
-                new EmptyBorder(7, 14, 7, 14)
-        ));
-        if (iconName != null) {
-            btn.setIcon(getIcon(iconName, 15, DANGER_FG));
-            btn.setIconTextGap(8);
-        }
-        installHover(btn, BG_SURFACE, DANGER_BG);
+    public static AnimatedButton createDangerButton(String text) {
+        AnimatedButton btn = new AnimatedButton(text, "trash");
+        btn.getStyleClass().setAll("btn-danger");
         return btn;
     }
 
-    private static void installHover(JButton btn, Color normalBg, Color hoverBg) {
-        btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                if (btn.isEnabled()) {
-                    btn.setBackground(hoverBg);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                if (btn.isEnabled()) {
-                    btn.setBackground(normalBg);
-                }
-            }
-        });
+    public static AnimatedButton createDangerButton(String text, String iconName) {
+        AnimatedButton btn = new AnimatedButton(text, iconName);
+        btn.getStyleClass().setAll("btn-danger");
+        return btn;
     }
 
-    public static JTextField createTextField(String placeholder) {
-        JTextField field = new JTextField();
-        field.setFont(fontRegular(13));
-        field.setForeground(TEXT_PRIMARY);
-        if (placeholder != null && !placeholder.isBlank()) {
-            field.putClientProperty("JTextField.placeholderText", placeholder);
+    public static Button createSquareIconButton(String iconName, double size, String tooltipText) {
+        Button btn = new Button();
+        btn.setMinSize(size, size);
+        btn.setPrefSize(size, size);
+        btn.setMaxSize(size, size);
+        btn.setAlignment(Pos.CENTER);
+        btn.setGraphic(TiketinIcons.getIcon(iconName, Math.max(14, size * 0.4), TEXT_PRIMARY));
+        btn.getStyleClass().setAll("icon-btn-square");
+        if (tooltipText != null && !tooltipText.isEmpty()) {
+            btn.setTooltip(new Tooltip(tooltipText));
         }
-        return field;
+        return btn;
     }
 
-    public static JPanel createFieldGroup(String labelText, JComponent input) {
-        JPanel wrapper = new JPanel();
-        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.Y_AXIS));
-        wrapper.setOpaque(false);
-        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel label = new JLabel(labelText);
-        label.setFont(fontBold(12));
-        label.setForeground(TEXT_PRIMARY);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.add(label);
-        wrapper.add(Box.createVerticalStrut(5));
-
-        if (!(input instanceof JScrollPane)) {
-            input.setPreferredSize(new Dimension(220, 36));
-            input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        }
-        input.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.add(input);
-        return wrapper;
+    public static TextField createTextField(String prompt) {
+        TextField tf = new TextField();
+        tf.setPromptText(prompt);
+        tf.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #20252A; -fx-prompt-text-fill: #788088; -fx-border-color: #E3E6E2; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 13px;");
+        return tf;
     }
 
-    public static JPanel createCardPanel() {
-        return createCardPanel(18, 20);
+    public static PasswordField createPasswordField(String prompt) {
+        PasswordField pf = new PasswordField();
+        pf.setPromptText(prompt);
+        pf.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #20252A; -fx-prompt-text-fill: #788088; -fx-border-color: #E3E6E2; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 8 12; -fx-font-size: 13px;");
+        return pf;
     }
 
-    public static JPanel createCardPanel(int padV, int padH) {
-        JPanel panel = new JPanel();
-        panel.setBackground(BG_SURFACE);
-        panel.setBorder(new CompoundBorder(
-                new LineBorder(BORDER, 1, true),
-                new EmptyBorder(padV, padH, padV, padH)
-        ));
-        return panel;
+    public static VBox createFieldGroup(String labelText, Region field) {
+        Label lbl = new Label(labelText);
+        lbl.setFont(fontBold(12));
+        lbl.setTextFill(TEXT_SECONDARY);
+        lbl.setStyle("-fx-text-fill: " + toHex(TEXT_SECONDARY) + ";");
+        VBox group = new VBox(6, lbl, field);
+        return group;
     }
 
-    public static JLabel createBadge(String text, Color bg, Color fg) {
-        JLabel badge = new JLabel(text);
-        badge.setOpaque(true);
-        badge.setBackground(bg);
-        badge.setForeground(fg);
+    public static Label createBadge(String text, Color fg, Color bg) {
+        Label badge = new Label(text);
         badge.setFont(fontBold(11));
-        badge.setBorder(new EmptyBorder(3, 9, 3, 9));
-        badge.setHorizontalAlignment(SwingConstants.CENTER);
+        badge.setTextFill(fg);
+        badge.setStyle("-fx-background-color: " + toHex(bg) + "; -fx-background-radius: 6px; -fx-padding: 3 8;");
         return badge;
     }
 
-    public static JLabel createStatusBadge(String rawStatus) {
-        String s = rawStatus == null ? "" : rawStatus.trim().toLowerCase();
-        switch (s) {
-            case "berhasil":
-            case "approved":
-                return createBadge("approved".equals(s) ? "Disetujui" : "Berhasil", SUCCESS_BG, SUCCESS_FG);
-            case "dibatalkan":
-            case "rejected":
-                return createBadge("rejected".equals(s) ? "Ditolak" : "Dibatalkan", DANGER_BG, DANGER_FG);
-            case "menunggu":
-            case "pending":
-                return createBadge("Menunggu", WARNING_BG, WARNING_FG);
-            case "admin":
-                return createBadge("Admin", DANGER_BG, DANGER_FG);
-            case "organizer":
-                return createBadge("Organizer", ACCENT_SOFT, ACCENT_TEXT);
-            case "user":
-                return createBadge("User", NEUTRAL_BG, NEUTRAL_FG);
+    public static Label createStatusBadge(String status) {
+        if (status == null) status = "UNKNOWN";
+        String upper = status.trim().toUpperCase();
+        switch (upper) {
+            case "APPROVED":
+            case "SUCCESS":
+            case "ACTIVE":
+            case "COMPLETED":
+            case "DISETUJUI":
+            case "BERHASIL":
+            case "AKTIF":
+            case "CONFIRMED":
+            case "VERIFIED":
+                return createBadge(status, SUCCESS_FG, SUCCESS_BG);
+
+            case "PENDING":
+            case "WAITING":
+            case "PROCESSING":
+            case "MENUNGGU":
+            case "MENUNGGU_VERIFIKASI":
+                return createBadge(status, WARNING_FG, WARNING_BG);
+
+            case "USED":
+            case "TERPAKAI":
+                return createBadge("terpakai", NEUTRAL_FG, NEUTRAL_BG);
+
+            case "REJECTED":
+            case "CANCELLED":
+            case "FAILED":
+            case "DANGER":
+            case "DITOLAK":
+            case "DIBATALKAN":
+            case "HABIS":
+                return createBadge(status, DANGER_FG, DANGER_BG);
+
             default:
-                String label = rawStatus == null || rawStatus.isBlank() ? "-" : rawStatus;
-                return createBadge(label, NEUTRAL_BG, NEUTRAL_FG);
+                return createBadge(status, NEUTRAL_FG, NEUTRAL_BG);
         }
     }
 
-    public static JTable createStyledTable(DefaultTableModel model) {
-        JTable table = new JTable(model);
-        table.setRowHeight(38);
-        table.setFont(fontRegular(13));
-        table.setForeground(TEXT_PRIMARY);
-        table.setBackground(BG_SURFACE);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setAutoCreateRowSorter(true);
-        table.setShowHorizontalLines(true);
-        table.setShowVerticalLines(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
-        table.setGridColor(BORDER);
-        table.getTableHeader().setFont(fontBold(12));
-        table.getTableHeader().setBackground(BG_SUBTLE);
-        table.getTableHeader().setForeground(TEXT_SECONDARY);
-        table.getTableHeader().setReorderingAllowed(false);
+    public static Label createCategoryBadge(String category) {
+        return createBadge(category != null ? category : "General", TEXT_SECONDARY, BG_SUBTLE);
+    }
 
-        DefaultTableCellRenderer cellPadding = new DefaultTableCellRenderer() {
+    public static javafx.stage.Window resolveWindow(Object owner) {
+        if (owner instanceof javafx.stage.Window) {
+            return (javafx.stage.Window) owner;
+        }
+        if (owner instanceof javafx.scene.Node) {
+            javafx.scene.Scene s = ((javafx.scene.Node) owner).getScene();
+            if (s != null) return s.getWindow();
+        }
+        if (owner instanceof Scene) {
+            return ((Scene) owner).getWindow();
+        }
+        return null;
+    }
+
+    public static void applyStylesheet(Scene scene) {
+        if (scene == null) return;
+        try {
+            var cssUrl = TiketinTheme.class.getResource("/styles/tiketin.css");
+            if (cssUrl != null) {
+                String url = cssUrl.toExternalForm();
+                if (!scene.getStylesheets().contains(url)) {
+                    scene.getStylesheets().add(url);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static <T> void runAsync(Callable<T> taskCallable, Consumer<T> onSuccess, Consumer<Throwable> onError) {
+        Task<T> task = new Task<>() {
             @Override
-            public Component getTableCellRendererComponent(JTable tbl, Object val, boolean selected, boolean focus, int r, int c) {
-                super.getTableCellRendererComponent(tbl, val, selected, focus, r, c);
-                setBorder(new EmptyBorder(0, 8, 0, 8));
-                return this;
+            protected T call() throws Exception {
+                return taskCallable.call();
             }
         };
-        table.setDefaultRenderer(Object.class, cellPadding);
-        return table;
-    }
 
-    public static JScrollPane wrapInTableScroll(JTable table) {
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(new LineBorder(BORDER, 1, true));
-        scroll.getViewport().setBackground(BG_SURFACE);
-        return scroll;
-    }
+        task.setOnSucceeded(e -> {
+            if (onSuccess != null) {
+                onSuccess.accept(task.getValue());
+            }
+        });
 
-    public static JTextArea createWrappingTextLabel(String text, Font font, Color color) {
-        JTextArea area = new JTextArea(text != null ? text : "");
-        area.setFont(font);
-        area.setForeground(color);
-        area.setEditable(false);
-        area.setFocusable(false);
-        area.setOpaque(false);
-        area.setWrapStyleWord(true);
-        area.setLineWrap(true);
-        area.setBorder(null);
-        return area;
-    }
+        task.setOnFailed(e -> {
+            if (onError != null) {
+                onError.accept(task.getException());
+            }
+        });
 
-    public static void registerEscapeClose(JDialog dialog) {
-        dialog.getRootPane().registerKeyboardAction(
-                e -> dialog.dispose(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
-                JComponent.WHEN_IN_FOCUSED_WINDOW
-        );
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 }

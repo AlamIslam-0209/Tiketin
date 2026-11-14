@@ -6,8 +6,10 @@
 *.iml
 .vscode/
 
+target/
+
 uploads/proofs/*
 !uploads/proofs/.gitkeep
 
-target/*
-!target/tiketin-desktop-2.0.0-jar-with-dependencies.jar
+uploads/avatars/*
+!uploads/avatars/.gitkeep
