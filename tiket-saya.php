@@ -17,7 +17,7 @@ $orders = [];
 if (isset($pdo)) {
     try {
         $stmt = $pdo->prepare("
-            SELECT o.*, e.name AS event_name, e.date AS event_date, e.time AS event_time, e.location AS event_location, e.category AS event_category,
+            SELECT o.*, e.name AS event_name, e.date AS event_date, e.time AS event_time, e.location AS event_location, e.category AS event_category, e.image_path AS event_image,
                    GROUP_CONCAT(t.ticket_code ORDER BY t.id ASC SEPARATOR ', ') AS ticket_codes
             FROM orders o 
             JOIN events e ON o.event_id = e.id 
@@ -45,6 +45,75 @@ foreach ($orders as $order) {
     }
 }
 
+$renderTicketCard = static function (array $order, bool $isHistory = false): string {
+    $cat = $order['event_category'] ?: 'Event';
+    $status = $order['status'] ?: 'menunggu';
+    $successText = $isHistory ? 'Selesai' : 'Berhasil';
+    $statusLabel = $status === 'berhasil' ? $successText : ($status === 'dibatalkan' ? 'Dibatalkan' : 'Menunggu');
+    $badgeClass = 'badge-' . $status;
+    $imageUrl = resolve_event_image_url($order['event_image'] ?? null);
+
+    ob_start();
+    ?>
+    <article class="my-ticket-card has-media">
+        <?php if ($imageUrl): ?>
+            <button type="button"
+                    class="my-ticket-media-16x9 is-zoomable"
+                    aria-label="Perbesar foto <?= htmlspecialchars($order['event_name']) ?>"
+                    onclick="openImageLightbox(<?= htmlspecialchars(json_encode($imageUrl)) ?>, <?= htmlspecialchars(json_encode($order['event_name'])) ?>)">
+                <img src="<?= htmlspecialchars($imageUrl) ?>" alt="Foto <?= htmlspecialchars($order['event_name']) ?>" loading="lazy" />
+                <span class="media-zoom-chip">Perbesar</span>
+            </button>
+        <?php else: ?>
+            <div class="my-ticket-media-16x9">
+                <?= render_event_category_svg($cat) ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="my-ticket-body">
+            <div class="my-ticket-top">
+                <span class="my-ticket-category"><?= htmlspecialchars($cat) ?></span>
+                <span class="badge <?= htmlspecialchars($badgeClass) ?>"><?= htmlspecialchars($statusLabel) ?></span>
+            </div>
+            <h3><?= htmlspecialchars($order['event_name']) ?></h3>
+            <dl class="my-ticket-details">
+                <div class="my-ticket-detail">
+                    <dt>Jadwal acara</dt>
+                    <dd><?= format_tanggal_id($order['event_date']) ?><?= !empty($order['event_time']) ? ' · ' . htmlspecialchars($order['event_time']) : '' ?></dd>
+                </div>
+                <div class="my-ticket-detail">
+                    <dt>Lokasi acara</dt>
+                    <dd><?= htmlspecialchars($order['event_location'] ?: 'Belum ditentukan') ?></dd>
+                </div>
+                <div class="my-ticket-detail">
+                    <dt>Jumlah tiket</dt>
+                    <dd><?= (int)$order['quantity'] ?> tiket</dd>
+                </div>
+                <div class="my-ticket-detail">
+                    <dt>Total harga</dt>
+                    <dd><?= format_rupiah($order['total_price']) ?></dd>
+                </div>
+                <div class="my-ticket-detail">
+                    <dt>Metode bayar</dt>
+                    <dd><?= htmlspecialchars(get_payment_method_label($order['payment_method'])) ?></dd>
+                </div>
+                <div class="my-ticket-detail">
+                    <dt>Dipesan</dt>
+                    <dd><?= date('d M Y, H:i', strtotime($order['purchased_at'])) ?></dd>
+                </div>
+                <?php if (!empty($order['ticket_codes'])): ?>
+                    <div class="my-ticket-detail" style="grid-column: 1 / -1;">
+                        <dt>Kode E-Tiket</dt>
+                        <dd><code><?= htmlspecialchars($order['ticket_codes']) ?></code></dd>
+                    </div>
+                <?php endif; ?>
+            </dl>
+        </div>
+    </article>
+    <?php
+    return (string)ob_get_clean();
+};
+
 require_once __DIR__ . '/includes/header.php';
 ?>
 
@@ -55,7 +124,6 @@ require_once __DIR__ . '/includes/header.php';
         <p>Semua tiket yang kamu pesan tersimpan di sini.</p>
     </div>
 
-    <!-- Tiket Belum Dipakai (Mendatang) -->
     <section class="my-tickets-section" aria-labelledby="upcomingTitle">
         <div class="my-tickets-heading">
             <h2 id="upcomingTitle">Belum dipakai</h2>
@@ -70,57 +138,13 @@ require_once __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <?php foreach ($upcomingOrders as $order): 
-                    $cat = $order['event_category'] ?: 'Event';
-                    $status = $order['status'] ?: 'menunggu';
-                    $statusLabel = $status === 'berhasil' ? 'Berhasil' : ($status === 'dibatalkan' ? 'Dibatalkan' : 'Menunggu');
-                    $badgeClass = 'badge-' . $status;
-                ?>
-                    <article class="my-ticket-card">
-                        <div class="my-ticket-top">
-                            <span class="my-ticket-category"><?= htmlspecialchars($cat) ?></span>
-                            <span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
-                        </div>
-                        <h3><?= htmlspecialchars($order['event_name']) ?></h3>
-                        <dl class="my-ticket-details">
-                            <div class="my-ticket-detail">
-                                <dt>Jadwal acara</dt>
-                                <dd><?= format_tanggal_id($order['event_date']) ?><?= !empty($order['event_time']) ? ' · ' . htmlspecialchars($order['event_time']) : '' ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Lokasi acara</dt>
-                                <dd><?= htmlspecialchars($order['event_location'] ?: 'Belum ditentukan') ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Jumlah tiket</dt>
-                                <dd><?= (int)$order['quantity'] ?> tiket</dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Total harga</dt>
-                                <dd><?= format_rupiah($order['total_price']) ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Metode bayar</dt>
-                                <dd><?= htmlspecialchars(get_payment_method_label($order['payment_method'])) ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Dipesan</dt>
-                                <dd><?= date('d M Y, H:i', strtotime($order['purchased_at'])) ?></dd>
-                            </div>
-                            <?php if (!empty($order['ticket_codes'])): ?>
-                                <div class="my-ticket-detail" style="grid-column: 1 / -1;">
-                                    <dt>Kode E-Tiket</dt>
-                                    <dd><code><?= htmlspecialchars($order['ticket_codes']) ?></code></dd>
-                                </div>
-                            <?php endif; ?>
-                        </dl>
-                    </article>
+                <?php foreach ($upcomingOrders as $order): ?>
+                    <?= $renderTicketCard($order, false) ?>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
     </section>
 
-    <!-- Riwayat Tiket (Lewat Tanggal) -->
     <section class="my-tickets-section" aria-labelledby="historyTitle">
         <div class="my-tickets-heading">
             <h2 id="historyTitle">Riwayat</h2>
@@ -132,51 +156,8 @@ require_once __DIR__ . '/includes/header.php';
                     <p>Belum ada riwayat tiket sebelumnya.</p>
                 </div>
             <?php else: ?>
-                <?php foreach ($historyOrders as $order): 
-                    $cat = $order['event_category'] ?: 'Event';
-                    $status = $order['status'] ?: 'menunggu';
-                    $statusLabel = $status === 'berhasil' ? 'Selesai' : ($status === 'dibatalkan' ? 'Dibatalkan' : 'Menunggu');
-                    $badgeClass = 'badge-' . $status;
-                ?>
-                    <article class="my-ticket-card">
-                        <div class="my-ticket-top">
-                            <span class="my-ticket-category"><?= htmlspecialchars($cat) ?></span>
-                            <span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
-                        </div>
-                        <h3><?= htmlspecialchars($order['event_name']) ?></h3>
-                        <dl class="my-ticket-details">
-                            <div class="my-ticket-detail">
-                                <dt>Jadwal acara</dt>
-                                <dd><?= format_tanggal_id($order['event_date']) ?><?= !empty($order['event_time']) ? ' · ' . htmlspecialchars($order['event_time']) : '' ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Lokasi acara</dt>
-                                <dd><?= htmlspecialchars($order['event_location'] ?: 'Belum ditentukan') ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Jumlah tiket</dt>
-                                <dd><?= (int)$order['quantity'] ?> tiket</dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Total harga</dt>
-                                <dd><?= format_rupiah($order['total_price']) ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Metode bayar</dt>
-                                <dd><?= htmlspecialchars(get_payment_method_label($order['payment_method'])) ?></dd>
-                            </div>
-                            <div class="my-ticket-detail">
-                                <dt>Dipesan</dt>
-                                <dd><?= date('d M Y, H:i', strtotime($order['purchased_at'])) ?></dd>
-                            </div>
-                            <?php if (!empty($order['ticket_codes'])): ?>
-                                <div class="my-ticket-detail" style="grid-column: 1 / -1;">
-                                    <dt>Kode E-Tiket</dt>
-                                    <dd><code><?= htmlspecialchars($order['ticket_codes']) ?></code></dd>
-                                </div>
-                            <?php endif; ?>
-                        </dl>
-                    </article>
+                <?php foreach ($historyOrders as $order): ?>
+                    <?= $renderTicketCard($order, true) ?>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>

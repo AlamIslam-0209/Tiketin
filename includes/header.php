@@ -1,7 +1,6 @@
 <?php
-/**
- * Header Template Tiketin
- */
+// Template header dan navigasi utama
+
 if (!defined('APP_ENV')) {
     require_once __DIR__ . '/../config/database.php';
 }
@@ -13,7 +12,6 @@ $pageTitle = $pageTitle ?? 'Tiketin — Temukan Event Favoritmu';
 $activeNav = $activeNav ?? '';
 $extraCss = $extraCss ?? [];
 
-// Status pengajuan jika login sebagai user biasa
 $userAppStatus = null;
 if ($currentUser && $currentUser['role'] === 'user' && isset($pdo)) {
     try {
@@ -34,11 +32,15 @@ $flash = get_flash();
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Tiketin — temukan dan pesan tiket event favoritmu secara mudah dan aman." />
     <title><?= htmlspecialchars($pageTitle) ?></title>
-    <link rel="stylesheet" href="assets/css/style.css" />
-    <?php foreach ($extraCss as $cssFile): ?>
-        <link rel="stylesheet" href="assets/css/<?= htmlspecialchars(basename($cssFile)) ?>" />
+    <?php $mainCssVer = @filemtime(__DIR__ . '/../assets/css/style.css') ?: time(); ?>
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= $mainCssVer ?>" />
+    <?php foreach ($extraCss as $cssFile):
+        $cssName = basename($cssFile);
+        $cssVer = @filemtime(__DIR__ . '/../assets/css/' . $cssName) ?: $mainCssVer;
+    ?>
+        <link rel="stylesheet" href="assets/css/<?= htmlspecialchars($cssName) ?>?v=<?= $cssVer ?>" />
     <?php endforeach; ?>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
     <script src="assets/js/animation.js" defer></script>
 </head>
 <body<?= isset($bodyDataDashboard) ? ' data-dashboard="' . htmlspecialchars($bodyDataDashboard) . '"' : '' ?>>

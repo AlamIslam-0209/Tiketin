@@ -1,7 +1,5 @@
 <?php
-/**
- * Handler CRUD Rekening & Metode Pembayaran Organizer (Tabel `payment` sesuai ERD)
- */
+// Kelola rekening bank milik organizer
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -50,7 +48,8 @@ if ($action === 'add') {
     }
 
 } elseif ($action === 'delete') {
-    $paymentId = (int)($_GET['id'] ?? ($_POST['id'] ?? 0));
+    $rawPayId = $_GET['id'] ?? ($_POST['id'] ?? '');
+    $paymentId = filter_var($rawPayId, FILTER_VALIDATE_INT) ?: 0;
 
     if ($paymentId <= 0) {
         set_flash('error', 'ID rekening tidak valid.');

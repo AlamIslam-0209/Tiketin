@@ -15,7 +15,6 @@ $totalSlots = 0;
 
 if (isset($pdo)) {
     try {
-        // Ambil event milik organizer
         $stmtEvents = $pdo->prepare("SELECT * FROM events WHERE owner_id = ? ORDER BY date ASC");
         $stmtEvents->execute([$currentUser['id']]);
         $myEvents = $stmtEvents->fetchAll();
@@ -24,7 +23,6 @@ if (isset($pdo)) {
             $totalSlots += (int)$evt['slots'];
         }
 
-        // Ambil order untuk event milik organizer
         $stmtOrders = $pdo->prepare("
             SELECT o.*, u.full_name AS buyer_name, u.username AS buyer_username, e.name AS event_name 
             FROM orders o 
@@ -36,7 +34,6 @@ if (isset($pdo)) {
         $stmtOrders->execute([$currentUser['id']]);
         $myOrders = $stmtOrders->fetchAll();
 
-        // Ambil rekening pembayaran milik organizer (tabel payment)
         $stmtPayments = $pdo->prepare("
             SELECT * FROM payment 
             WHERE user_id = ? 
@@ -61,7 +58,6 @@ require_once __DIR__ . '/includes/header.php';
         <p>Tambah dan perbarui acara yang kamu kelola. Event baru langsung tampil di halaman utama.</p>
     </div>
 
-    <!-- Ringkasan Statistik -->
     <div class="dashboard-summary" id="dashboardSummary">
         <div class="summary-item">
             <strong><?= count($myEvents) ?></strong>
@@ -82,14 +78,19 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 
     <div class="dashboard-layout">
-        <!-- Form Tambah / Edit Event -->
         <section class="panel dashboard-section" aria-labelledby="formTitle">
             <h2 id="eventFormTitle">Tambah event</h2>
             <p id="eventError" class="form-error"></p>
             
-            <form id="eventForm" action="proses/event_process.php" method="POST">
+            <form id="eventForm" action="proses/event_process.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="create" />
                 <input type="hidden" name="event_id" id="formEventId" value="" />
+
+                <?= render_event_image_upload_field([
+                    'id' => 'orgEventUploadWidget',
+                    'input_id' => 'orgEventImageInput',
+                    'required' => true,
+                ]) ?>
 
                 <div class="form-field">
                     <label for="eventName">Nama event</label>
@@ -146,7 +147,6 @@ require_once __DIR__ . '/includes/header.php';
             </form>
         </section>
 
-        <!-- Daftar Event Terdaftar -->
         <section class="panel dashboard-section" aria-labelledby="eventsTitle">
             <div class="panel-heading">
                 <h2 id="eventsTitle">Event terdaftar</h2>
@@ -157,8 +157,23 @@ require_once __DIR__ . '/includes/header.php';
                 <?php if (empty($myEvents)): ?>
                     <p class="empty-state">Belum ada event. Buat event pertamamu melalui form di sebelah kiri.</p>
                 <?php else: ?>
-                    <?php foreach ($myEvents as $event): ?>
+                    <?php foreach ($myEvents as $event):
+                        $imageUrl = resolve_event_image_url($event['image_path'] ?? null);
+                        $eventPayload = array_merge($event, ['imageUrl' => $imageUrl]);
+                    ?>
                         <article class="management-row">
+                            <?php if ($imageUrl): ?>
+                                <button type="button"
+                                        class="management-thumb-16x9 is-zoomable"
+                                        aria-label="Perbesar foto <?= htmlspecialchars($event['name']) ?>"
+                                        onclick="openImageLightbox(<?= htmlspecialchars(json_encode($imageUrl)) ?>, <?= htmlspecialchars(json_encode($event['name'])) ?>)">
+                                    <img src="<?= htmlspecialchars($imageUrl) ?>" alt="Foto <?= htmlspecialchars($event['name']) ?>" loading="lazy" />
+                                </button>
+                            <?php else: ?>
+                                <div class="management-thumb-16x9">
+                                    <?= render_event_category_svg($event['category'] ?? 'Lainnya') ?>
+                                </div>
+                            <?php endif; ?>
                             <div class="management-copy">
                                 <h3><?= htmlspecialchars($event['name']) ?></h3>
                                 <p>
@@ -171,7 +186,7 @@ require_once __DIR__ . '/includes/header.php';
                                 <?php endif; ?>
                             </div>
                             <div class="row-actions">
-                                <button class="button button-quiet" type="button" onclick="editEvent(<?= htmlspecialchars(json_encode($event)) ?>)">Edit</button>
+                                <button class="button button-quiet" type="button" onclick="editEvent(<?= htmlspecialchars(json_encode($eventPayload)) ?>)">Edit</button>
                                 <a class="button button-danger" 
                                    href="proses/event_process.php?action=delete&id=<?= (int)$event['id'] ?>" 
                                    onclick="return confirm('Yakin ingin menghapus event &quot;<?= htmlspecialchars(addslashes($event['name'])) ?>&quot;? Tindakan ini tidak bisa dibatalkan.')">
@@ -185,7 +200,6 @@ require_once __DIR__ . '/includes/header.php';
         </section>
     </div>
 
-    <!-- Section Rekening Pembayaran Organizer -->
     <section class="panel dashboard-section" id="rekeningSection" style="margin-top: 32px;" aria-labelledby="paymentTitle">
         <div class="panel-heading">
             <div>
@@ -198,7 +212,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
 
         <div class="dashboard-layout" style="margin-top: 20px;">
-            <!-- Form Tambah Rekening -->
             <div style="background: var(--paper); padding: 22px; border-radius: 14px; border: 1px solid var(--line);">
                 <h3 style="margin-top:0; font-size: 1.15rem; margin-bottom: 14px;">Tambah rekening baru</h3>
                 <form action="proses/payment_process.php" method="POST">
@@ -237,7 +250,6 @@ require_once __DIR__ . '/includes/header.php';
                 </form>
             </div>
 
-            <!-- Daftar Rekening Terdaftar -->
             <div>
                 <h3 style="margin-top:0; font-size: 1.15rem; margin-bottom: 14px;">Daftar rekening aktif</h3>
                 <?php if (empty($myPayments)): ?>
@@ -270,7 +282,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <!-- Section Order Masuk -->
     <section class="panel dashboard-section" style="margin-top: 32px;" aria-labelledby="ordersTitle">
         <div class="panel-heading">
             <h2 id="ordersTitle">Order masuk</h2>
@@ -358,14 +369,14 @@ require_once __DIR__ . '/includes/header.php';
     </section>
 </main>
 
-<!-- Modal Lihat Bukti Transfer -->
 <div class="modal-backdrop" id="proofModal" role="dialog" aria-modal="true" aria-hidden="true" onclick="closeProofModal()">
     <div class="modal" style="max-width:500px;" onclick="event.stopPropagation()">
         <button class="modal-close" type="button" aria-label="Tutup pratinjau bukti transfer" onclick="closeProofModal()">×</button>
         <p class="eyebrow">Verifikasi Transaksi</p>
         <h2>Bukti Pembayaran.</h2>
         <div style="text-align:center; padding:16px 0;">
-            <img id="modalProofImg" class="proof-modal-image" src="" alt="Bukti Transfer" />
+            <img id="modalProofImg" class="proof-modal-image" src="" alt="Bukti Transfer" onerror="this.style.display='none'; document.getElementById('modalProofFallback').style.display='block';" />
+            <div id="modalProofFallback" class="notice" style="display:none; margin:0; text-align:left;">File gambar bukti pembayaran tidak ditemukan di folder lokal (data sampel/seed). Untuk pesanan baru, foto bukti transfer akan tampil di sini.</div>
         </div>
         <button class="button button-quiet" type="button" onclick="closeProofModal()" style="width:100%; margin-top:8px;">Tutup</button>
     </div>
@@ -384,6 +395,13 @@ function editEvent(event) {
     document.getElementById('eventSlots').value = event.slots;
     document.getElementById('eventDescription').value = event.description || '';
 
+    setUploadWidgetSavedImage(
+        'orgEventUploadWidget',
+        event.imageUrl || '',
+        event.image_path || '',
+        !event.imageUrl
+    );
+
     document.getElementById('eventFormTitle').textContent = `Edit ${event.name}`;
     document.getElementById('eventSubmit').textContent = 'Simpan perubahan';
     document.getElementById('cancelEdit').style.display = 'inline-block';
@@ -396,6 +414,7 @@ function editEvent(event) {
 function resetEventForm() {
     const form = document.getElementById('eventForm');
     form.reset();
+    resetUploadWidget('orgEventUploadWidget', true);
     document.getElementById('formAction').value = 'create';
     document.getElementById('formEventId').value = '';
     document.getElementById('eventFormTitle').textContent = 'Tambah event';
@@ -433,7 +452,10 @@ function toggleCustomBank(val) {
 function viewProof(src) {
     const modal = document.getElementById('proofModal');
     const img = document.getElementById('modalProofImg');
+    const fallback = document.getElementById('modalProofFallback');
     if (modal && img) {
+        if (fallback) fallback.style.display = 'none';
+        img.style.display = 'inline-block';
         img.src = src;
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');

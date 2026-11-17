@@ -1,7 +1,5 @@
 <?php
-/**
- * Handler Pemesanan Tiket & Upload Bukti Pembayaran
- */
+// Proses pemesanan tiket dan upload bukti transfer
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -20,8 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$eventId = (int)($_POST['event_id'] ?? 0);
-$quantity = (int)($_POST['quantity'] ?? 1);
+$eventId = filter_var($_POST['event_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
+$rawQty = filter_var($_POST['quantity'] ?? 1, FILTER_VALIDATE_INT);
+$quantity = $rawQty !== false ? $rawQty : 0;
 $paymentMethod = trim($_POST['payment_method'] ?? '');
 
 if ($eventId <= 0 || $quantity < 1 || $quantity > 10) {
@@ -30,15 +29,29 @@ if ($eventId <= 0 || $quantity < 1 || $quantity > 10) {
     exit;
 }
 
+$stmtEvtOwner = $pdo->prepare("SELECT owner_id FROM events WHERE id = ?");
+$stmtEvtOwner->execute([$eventId]);
+$evtOwnerRow = $stmtEvtOwner->fetch();
+if (!$evtOwnerRow) {
+    set_flash('error', 'Event tidak ditemukan.');
+    header('Location: ../index.php#tickets');
+    exit;
+}
+
 $paymentMethodName = 'Transfer Bank';
 if (strtolower($paymentMethod) === 'qris') {
     $paymentMethodName = 'QRIS';
 } elseif (str_starts_with($paymentMethod, 'bank_')) {
-    $payId = (int)substr($paymentMethod, 5);
-    $stmtP = $pdo->prepare("SELECT bank_name FROM payment WHERE id = ?");
-    $stmtP->execute([$payId]);
+    $payId = filter_var(substr($paymentMethod, 5), FILTER_VALIDATE_INT) ?: 0;
+    $stmtP = $pdo->prepare("SELECT bank_name FROM payment WHERE id = ? AND user_id = ? AND is_active = 1");
+    $stmtP->execute([$payId, $evtOwnerRow['owner_id']]);
     $payRow = $stmtP->fetch();
-    $paymentMethodName = $payRow ? $payRow['bank_name'] : 'Transfer Bank';
+    if (!$payRow) {
+        set_flash('error', 'Rekening pembayaran tidak valid untuk event ini.');
+        header('Location: ../index.php#tickets');
+        exit;
+    }
+    $paymentMethodName = $payRow['bank_name'];
 } elseif (in_array(strtolower($paymentMethod), ['bca', 'bri', 'bsi', 'mandiri'], true)) {
     $paymentMethodName = get_payment_method_label($paymentMethod);
 } else {
@@ -47,7 +60,6 @@ if (strtolower($paymentMethod) === 'qris') {
     exit;
 }
 
-// Validasi Upload Bukti Transfer
 $proofFilename = null;
 if (!isset($_FILES['payment_proof']) || $_FILES['payment_proof']['error'] !== UPLOAD_ERR_OK) {
     $errCode = $_FILES['payment_proof']['error'] ?? 'missing';
@@ -72,19 +84,24 @@ if (!in_array($ext, $allowedExts, true)) {
     exit;
 }
 
-// Validasi MIME jika modul finfo tersedia
 if (function_exists('finfo_open')) {
     $finfo = @finfo_open(FILEINFO_MIME_TYPE);
     if ($finfo) {
         $mimeType = @finfo_file($finfo, $file['tmp_name']);
         @finfo_close($finfo);
-        $allowedMimes = ['image/jpeg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif', 'application/octet-stream'];
+        $allowedMimes = ['image/jpeg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif'];
         if ($mimeType && !in_array($mimeType, $allowedMimes, true)) {
             set_flash('error', 'Tipe file tidak valid. Harap unggah file foto/screenshot bukti transfer.');
             header('Location: ../index.php#tickets');
             exit;
         }
     }
+}
+
+if (@getimagesize($file['tmp_name']) === false) {
+    set_flash('error', 'File bukti pembayaran bukan gambar yang valid.');
+    header('Location: ../index.php#tickets');
+    exit;
 }
 
 if ($file['size'] > 5 * 1024 * 1024) {
@@ -96,9 +113,9 @@ if ($file['size'] > 5 * 1024 * 1024) {
 $proofFilename = 'proof_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
 $uploadDir = __DIR__ . '/../uploads/proofs/';
 if (!is_dir($uploadDir)) {
-    @mkdir($uploadDir, 0777, true);
+    @mkdir($uploadDir, 0755, true);
 }
-@chmod($uploadDir, 0777);
+@chmod($uploadDir, 0755);
 $targetPath = $uploadDir . $proofFilename;
 
 if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
@@ -106,12 +123,12 @@ if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
     header('Location: ../index.php#tickets');
     exit;
 }
-@chmod($targetPath, 0666);
+@chmod($targetPath, 0644);
 
 try {
     $pdo->beginTransaction();
 
-    // Kunci row event untuk verifikasi kuota slot (SELECT FOR UPDATE)
+    // Kunci baris event dulu biar stok tiket aman dari double booking
     $stmtEvent = $pdo->prepare("SELECT id, name, price, slots FROM events WHERE id = ? FOR UPDATE");
     $stmtEvent->execute([$eventId]);
     $event = $stmtEvent->fetch();
@@ -124,11 +141,9 @@ try {
         throw new Exception('Slot tiket tidak mencukupi (sisa slot: ' . $event['slots'] . ').');
     }
 
-    // Kurangi kuota slot tiket
     $updateStmt = $pdo->prepare("UPDATE events SET slots = slots - ? WHERE id = ?");
     $updateStmt->execute([$quantity, $eventId]);
 
-    // Simpan data order
     $orderCode = generate_order_code();
     $totalPrice = (int)$event['price'] * $quantity;
 
@@ -148,7 +163,6 @@ try {
     ]);
     $newOrderId = (int)$pdo->lastInsertId();
 
-    // Simpan rincian tiket individual ke tabel 'tickets' (sesuai ERD)
     $ticketStmt = $pdo->prepare("
         INSERT INTO tickets (order_id, event_id, ticket_code, purchase_price, status)
         VALUES (?, ?, ?, ?, 'valid')
@@ -173,7 +187,7 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    // Hapus file yang sudah diunggah jika transaksi database gagal
+    // Kalau transaksi gagal, hapus lagi file bukti yang terlanjur ke-upload
     if ($proofFilename && file_exists($targetPath)) {
         @unlink($targetPath);
     }

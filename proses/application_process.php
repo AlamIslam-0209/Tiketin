@@ -1,7 +1,5 @@
 <?php
-/**
- * Handler Pengajuan & Keputusan Calon Organizer
- */
+// Proses pengajuan calon organizer dan persetujuan admin
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -39,9 +37,9 @@ if ($action === 'apply') {
         exit;
     }
 
+    $imgResult = ['uploaded_new' => false, 'filename' => null];
     try {
-        // Cek pengajuan terakhir
-        $checkStmt = $pdo->prepare("SELECT status FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1");
+        $checkStmt = $pdo->prepare("SELECT status, image_path FROM applications WHERE user_id = ? ORDER BY id DESC LIMIT 1");
         $checkStmt->execute([$currentUser['id']]);
         $prev = $checkStmt->fetch();
 
@@ -51,9 +49,19 @@ if ($action === 'apply') {
             exit;
         }
 
+        $prevImg = ($prev && !empty($prev['image_path']) && resolve_event_image_url($prev['image_path']) !== null)
+            ? basename(trim((string)$prev['image_path']))
+            : null;
+        $imgResult = handle_event_image_upload('event_image', 'app', $prevImg === null, $prevImg);
+        if (!$imgResult['ok']) {
+            set_flash('error', $imgResult['error']);
+            header('Location: ../apply.php');
+            exit;
+        }
+
         $insertStmt = $pdo->prepare("
-            INSERT INTO applications (user_id, full_name, contact, organization, event_name, event_date, event_time, event_location, event_price, event_slots, event_category, event_description, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            INSERT INTO applications (user_id, full_name, contact, organization, event_name, event_date, event_time, event_location, event_price, event_slots, event_category, event_description, image_path, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
         $insertStmt->execute([
             $currentUser['id'],
@@ -67,13 +75,17 @@ if ($action === 'apply') {
             $eventPrice,
             $eventSlots,
             $eventCategory ?: 'Konser',
-            $eventDesc
+            $eventDesc,
+            $imgResult['filename']
         ]);
 
         set_flash('success', 'Pengajuan organizer berhasil dikirim! Menunggu persetujuan admin.');
         header('Location: ../apply.php');
         exit;
     } catch (Exception $e) {
+        if (!empty($imgResult['uploaded_new']) && !empty($imgResult['filename'])) {
+            @unlink(__DIR__ . '/../uploads/events/' . basename($imgResult['filename']));
+        }
         set_flash('error', 'Gagal mengirimkan pengajuan: ' . $e->getMessage());
         header('Location: ../apply.php');
         exit;
@@ -82,7 +94,7 @@ if ($action === 'apply') {
 } elseif ($action === 'decide') {
     require_role('admin', '../login.php');
 
-    $appId = (int)($_POST['application_id'] ?? 0);
+    $appId = filter_var($_POST['application_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
     $decision = trim($_POST['status'] ?? '');
     $reason = trim($_POST['reason'] ?? '');
 
@@ -110,18 +122,16 @@ if ($action === 'apply') {
         }
 
         if ($decision === 'approved') {
-            // 1. Update status aplikasi
+            // Sekalian ubah status pengajuan, naikkan role user, dan terbitkan event perdananya
             $upApp = $pdo->prepare("UPDATE applications SET status = 'approved', reason = NULL WHERE id = ?");
             $upApp->execute([$appId]);
 
-            // 2. Naikkan role pengguna ke organizer dan update nama/organisasi
             $upUser = $pdo->prepare("UPDATE users SET role = 'organizer', full_name = ?, organization = ? WHERE id = ?");
             $upUser->execute([$app['full_name'], $app['organization'], $app['user_id']]);
 
-            // 3. Terbitkan event pertama
             $inEvt = $pdo->prepare("
-                INSERT INTO events (owner_id, name, date, time, location, price, slots, category, description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO events (owner_id, name, date, time, location, price, slots, category, description, image_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $inEvt->execute([
                 $app['user_id'],
@@ -132,13 +142,13 @@ if ($action === 'apply') {
                 $app['event_price'],
                 $app['event_slots'],
                 $app['event_category'],
-                $app['event_description']
+                $app['event_description'],
+                $app['image_path'] ?? null
             ]);
 
             $pdo->commit();
             set_flash('success', 'Pengajuan organisasi "' . $app['organization'] . '" disetujui! Role pengguna berhasil diubah dan event perdana telah tayang.');
         } else {
-            // Rejected
             $upApp = $pdo->prepare("UPDATE applications SET status = 'rejected', reason = ? WHERE id = ?");
             $upApp->execute([$reason, $appId]);
 

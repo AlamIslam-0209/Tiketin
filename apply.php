@@ -43,7 +43,10 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         <?php endif; ?>
 
-        <form class="panel form-panel" id="applicationForm" action="proses/application_process.php?action=apply" method="POST">
+        <?php
+        $prevImageUrl = ($prev && !empty($prev['image_path'])) ? resolve_event_image_url($prev['image_path']) : null;
+        ?>
+        <form class="panel form-panel" id="applicationForm" action="proses/application_process.php?action=apply" method="POST" enctype="multipart/form-data">
             <h2>Identitas &amp; organisasi</h2>
             <div class="form-grid">
                 <div>
@@ -63,6 +66,16 @@ require_once __DIR__ . '/includes/header.php';
 
             <h2>Event pertama yang ingin dibuat</h2>
             <p class="panel-intro">Data event ini akan langsung aktif begitu pengajuanmu disetujui admin.</p>
+
+            <?= render_event_image_upload_field([
+                'id' => 'applyEventUploadWidget',
+                'input_id' => 'applyEventImageInput',
+                'label' => 'Foto Event Perdana (Rasio 16:9)',
+                'required' => $prevImageUrl === null,
+                'existing_url' => $prevImageUrl,
+                'existing_name' => $prevImageUrl ? basename((string)$prev['image_path']) : null,
+                'badge_text' => $prevImageUrl ? 'Foto sebelumnya tersimpan · Rasio 16:9 utuh' : 'Wajib 1 foto · Rasio 16:9 utuh',
+            ]) ?>
 
             <div class="form-field">
                 <label for="eventName">Nama event</label>

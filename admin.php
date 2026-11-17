@@ -15,15 +15,12 @@ $events = [];
 
 if (isset($pdo)) {
     try {
-        // Daftar semua akun
         $stmtUsers = $pdo->query("SELECT * FROM users ORDER BY id ASC");
         $users = $stmtUsers->fetchAll();
 
-        // Daftar pengajuan organizer
         $stmtApps = $pdo->query("SELECT * FROM applications ORDER BY id DESC");
         $applications = $stmtApps->fetchAll();
 
-        // Daftar seluruh event
         $stmtEvents = $pdo->query("
             SELECT e.*, u.username AS owner_username, u.organization AS owner_org 
             FROM events e 
@@ -50,7 +47,6 @@ require_once __DIR__ . '/includes/header.php';
         <p>Tinjau calon organizer, lihat akun, dan kelola seluruh event yang tayang.</p>
     </div>
 
-    <!-- Ringkasan Statistik -->
     <div class="dashboard-summary" id="dashboardSummary">
         <div class="summary-item">
             <strong><?= count($users) ?></strong>
@@ -66,7 +62,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </div>
 
-    <!-- 1. Pengajuan Organizer -->
     <section class="panel dashboard-section" aria-labelledby="applicationsTitle">
         <div class="panel-heading">
             <h2 id="applicationsTitle">Pengajuan organizer</h2>
@@ -80,6 +75,7 @@ require_once __DIR__ . '/includes/header.php';
                 <?php foreach ($applications as $app): 
                     $status = $app['status'];
                     $statusLabel = $status === 'approved' ? 'Disetujui' : ($status === 'rejected' ? 'Ditolak' : 'Menunggu');
+                    $appImageUrl = resolve_event_image_url($app['image_path'] ?? null);
                 ?>
                     <article class="application-row">
                         <div class="application-heading">
@@ -99,6 +95,23 @@ require_once __DIR__ . '/includes/header.php';
                         <?php if (!empty($app['event_description'])): ?>
                             <p style="font-size:0.85rem; color:var(--muted);"><?= htmlspecialchars($app['event_description']) ?></p>
                         <?php endif; ?>
+
+                        <div class="application-media-row">
+                            <?php if ($appImageUrl): ?>
+                                <button type="button"
+                                        class="management-thumb-16x9 is-zoomable"
+                                        aria-label="Perbesar foto proposal <?= htmlspecialchars($app['event_name']) ?>"
+                                        onclick="openImageLightbox(<?= htmlspecialchars(json_encode($appImageUrl)) ?>, <?= htmlspecialchars(json_encode('Proposal: ' . $app['event_name'])) ?>)">
+                                    <img src="<?= htmlspecialchars($appImageUrl) ?>" alt="Foto proposal <?= htmlspecialchars($app['event_name']) ?>" loading="lazy" />
+                                </button>
+                                <span class="application-media-hint">Foto proposal event perdana · Klik untuk perbesar</span>
+                            <?php else: ?>
+                                <div class="management-thumb-16x9">
+                                    <?= render_event_category_svg($app['event_category'] ?? 'Lainnya') ?>
+                                </div>
+                                <span class="application-media-hint">Belum ada foto proposal (tampilan ilustrasi kategori)</span>
+                            <?php endif; ?>
+                        </div>
 
                         <?php if ($status === 'rejected' && !empty($app['reason'])): ?>
                             <p class="rejection-reason">Alasan: <?= htmlspecialchars($app['reason']) ?></p>
@@ -138,7 +151,6 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <!-- 2. Akun Terdaftar -->
     <section class="panel dashboard-section" aria-labelledby="usersTitle">
         <div class="panel-heading">
             <h2 id="usersTitle">Akun pengguna</h2>
@@ -159,19 +171,24 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <!-- 3. Seluruh Event & Form Edit Admin -->
     <section class="panel dashboard-section" aria-labelledby="eventsTitle">
         <div class="panel-heading">
             <h2 id="eventsTitle">Seluruh event yang tayang</h2>
             <span id="eventCount"><?= count($events) ?> event</span>
         </div>
 
-        <!-- Form Edit Event Admin (Hidden by default) -->
         <div id="adminEditBox" class="panel form-panel" style="display:none; margin-bottom:24px; border:1.5px solid var(--coral); background:var(--card);">
             <h3 id="adminEditTitle" style="margin-top:0;">Edit Event</h3>
-            <form action="proses/event_process.php" method="POST">
+            <form action="proses/event_process.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="update" />
                 <input type="hidden" name="event_id" id="adminEventId" value="" />
+
+                <?= render_event_image_upload_field([
+                    'id' => 'adminEventUploadWidget',
+                    'input_id' => 'adminEventImageInput',
+                    'required' => false,
+                    'badge_text' => '1 foto · Rasio 16:9 utuh',
+                ]) ?>
 
                 <div class="form-field">
                     <label for="adminEventName">Nama event</label>
@@ -232,8 +249,23 @@ require_once __DIR__ . '/includes/header.php';
             <?php if (empty($events)): ?>
                 <p class="empty-state">Belum ada event terdaftar.</p>
             <?php else: ?>
-                <?php foreach ($events as $evt): ?>
+                <?php foreach ($events as $evt):
+                    $evtImageUrl = resolve_event_image_url($evt['image_path'] ?? null);
+                    $evtPayload = array_merge($evt, ['imageUrl' => $evtImageUrl]);
+                ?>
                     <article class="management-row">
+                        <?php if ($evtImageUrl): ?>
+                            <button type="button"
+                                    class="management-thumb-16x9 is-zoomable"
+                                    aria-label="Perbesar foto <?= htmlspecialchars($evt['name']) ?>"
+                                    onclick="openImageLightbox(<?= htmlspecialchars(json_encode($evtImageUrl)) ?>, <?= htmlspecialchars(json_encode($evt['name'])) ?>)">
+                                <img src="<?= htmlspecialchars($evtImageUrl) ?>" alt="Foto <?= htmlspecialchars($evt['name']) ?>" loading="lazy" />
+                            </button>
+                        <?php else: ?>
+                            <div class="management-thumb-16x9">
+                                <?= render_event_category_svg($evt['category'] ?? 'Lainnya') ?>
+                            </div>
+                        <?php endif; ?>
                         <div class="management-copy">
                             <h3><?= htmlspecialchars($evt['name']) ?></h3>
                             <p>
@@ -247,9 +279,14 @@ require_once __DIR__ . '/includes/header.php';
                             <small>Penyelenggara: <?= htmlspecialchars($evt['owner_org'] ?: ($evt['owner_username'] ?: 'Tidak diketahui')) ?></small>
                         </div>
                         <div class="row-actions">
-                            <button class="button button-quiet" type="button" onclick="openAdminEdit(<?= htmlspecialchars(json_encode($evt)) ?>)">
+                            <button class="button button-quiet" type="button" onclick="openAdminEdit(<?= htmlspecialchars(json_encode($evtPayload)) ?>)">
                                 Edit
                             </button>
+                            <a class="button button-danger"
+                               href="proses/event_process.php?action=delete&id=<?= (int)$evt['id'] ?>"
+                               onclick="return confirm(<?= htmlspecialchars(json_encode('Yakin ingin menghapus event "' . $evt['name'] . '"? Tindakan ini tidak bisa dibatalkan.'), ENT_QUOTES, 'UTF-8') ?>)">
+                                Hapus
+                            </a>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -270,6 +307,13 @@ function openAdminEdit(evt) {
     document.getElementById('adminEventSlots').value = evt.slots;
     document.getElementById('adminEventDescription').value = evt.description || '';
 
+    setUploadWidgetSavedImage(
+        'adminEventUploadWidget',
+        evt.imageUrl || '',
+        evt.image_path || '',
+        !evt.imageUrl
+    );
+
     document.getElementById('adminEditTitle').textContent = `Edit Event: ${evt.name}`;
     const box = document.getElementById('adminEditBox');
     box.style.display = 'block';
@@ -278,6 +322,7 @@ function openAdminEdit(evt) {
 }
 
 function closeAdminEdit() {
+    resetUploadWidget('adminEventUploadWidget', false);
     document.getElementById('adminEditBox').style.display = 'none';
 }
 </script>

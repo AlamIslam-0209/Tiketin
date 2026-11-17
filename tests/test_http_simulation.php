@@ -1,8 +1,5 @@
 <?php
-/**
- * Automated HTTP Simulation Test for Tiketin
- */
-
+// Simulasi request HTTP untuk uji halaman publik, guard role, dan logout
 $baseUrl = 'http://127.0.0.1:8765';
 
 function test_http($name, $callable) {
@@ -56,7 +53,7 @@ $userCookie = sys_get_temp_dir() . '/tiketin_test_user_' . uniqid() . '.cookie';
 $orgCookie = sys_get_temp_dir() . '/tiketin_test_org_' . uniqid() . '.cookie';
 $adminCookie = sys_get_temp_dir() . '/tiketin_test_admin_' . uniqid() . '.cookie';
 
-// 1. Public Pages
+// Halaman publik tanpa login
 test_http("1. Public GET index.php", function() use ($baseUrl) {
     $r = curl_req($baseUrl . '/index.php');
     if ($r['code'] !== 200) return "Expected 200, got {$r['code']}";
@@ -77,7 +74,7 @@ test_http("2. Public GET login.php & register.php", function() use ($baseUrl) {
     return true;
 });
 
-// 2. Auth Guard Protection (unauthenticated)
+// Proteksi halaman wajib login
 test_http("3. Unauthenticated redirects to login.php", function() use ($baseUrl) {
     $pages = ['/tiket-saya.php', '/apply.php', '/organizer.php', '/admin.php'];
     foreach ($pages as $p) {
@@ -89,10 +86,10 @@ test_http("3. Unauthenticated redirects to login.php", function() use ($baseUrl)
     return true;
 });
 
-// 3. User Login & Access Control
+// Login user biasa dan cek batasan role
 test_http("4. User Login & Session Guard", function() use ($baseUrl, $userCookie) {
     $r = curl_req($baseUrl . '/proses/auth_process.php?action=login', 'POST', [
-        'username' => 'alam',
+        'username' => 'pengunjung',
         'password' => 'user123'
     ], $userCookie);
 
@@ -100,25 +97,21 @@ test_http("4. User Login & Session Guard", function() use ($baseUrl, $userCookie
         return "User login failed to redirect to index.php#home";
     }
 
-    // Access tiket-saya as user
     $r2 = curl_req($baseUrl . '/tiket-saya.php', 'GET', [], $userCookie);
     if ($r2['code'] !== 200 || !str_contains($r2['body'], 'Tiket Saya')) {
         return "Failed to access tiket-saya.php as user (code: {$r2['code']})";
     }
 
-    // Access apply.php as user
     $r3 = curl_req($baseUrl . '/apply.php', 'GET', [], $userCookie);
     if ($r3['code'] !== 200 || !str_contains($r3['body'], 'Ajukan jadi organizer')) {
         return "Failed to access apply.php as user (code: {$r3['code']})";
     }
 
-    // Attempt to access organizer.php as user -> should redirect
     $r4 = curl_req($baseUrl . '/organizer.php', 'GET', [], $userCookie);
     if ($r4['code'] !== 302) {
         return "User should not access organizer.php (code: {$r4['code']})";
     }
 
-    // Attempt to access admin.php as user -> should redirect
     $r5 = curl_req($baseUrl . '/admin.php', 'GET', [], $userCookie);
     if ($r5['code'] !== 302) {
         return "User should not access admin.php (code: {$r5['code']})";
@@ -127,7 +120,7 @@ test_http("4. User Login & Session Guard", function() use ($baseUrl, $userCookie
     return true;
 });
 
-// 4. Organizer Login & Dashboard
+// Login organizer dan akses dashboard
 test_http("5. Organizer Login & Dashboard Access", function() use ($baseUrl, $orgCookie) {
     $r = curl_req($baseUrl . '/proses/auth_process.php?action=login', 'POST', [
         'username' => 'senjasuara',
@@ -146,7 +139,7 @@ test_http("5. Organizer Login & Dashboard Access", function() use ($baseUrl, $or
     return true;
 });
 
-// 5. Admin Login & Dashboard
+// Login admin dan akses dashboard
 test_http("6. Admin Login & Dashboard Access", function() use ($baseUrl, $adminCookie) {
     $r = curl_req($baseUrl . '/proses/auth_process.php?action=login', 'POST', [
         'username' => 'admin',
@@ -165,12 +158,11 @@ test_http("6. Admin Login & Dashboard Access", function() use ($baseUrl, $adminC
     return true;
 });
 
-// 6. Logout test
+// Logout harus membersihkan session
 test_http("7. Logout clears session", function() use ($baseUrl, $userCookie) {
     $r = curl_req($baseUrl . '/logout.php', 'GET', [], $userCookie);
     if ($r['code'] !== 302) return "Logout should redirect";
 
-    // Now try to access tiket-saya with the same cookie
     $r2 = curl_req($baseUrl . '/tiket-saya.php', 'GET', [], $userCookie);
     if ($r2['code'] !== 302 || !str_contains($r2['headers'], 'login.php')) {
         return "User session was not cleared properly after logout";
@@ -178,7 +170,6 @@ test_http("7. Logout clears session", function() use ($baseUrl, $userCookie) {
     return true;
 });
 
-// Clean up cookies
 @unlink($userCookie);
 @unlink($orgCookie);
 @unlink($adminCookie);

@@ -1,7 +1,5 @@
 <?php
-/**
- * Automated End-to-End CRUD Test Suite for Tiketin Migration
- */
+// Skrip uji CRUD end-to-end dengan database MySQL
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
@@ -17,27 +15,25 @@ function assert_true($condition, $msg) {
     }
 }
 
-// 1. Test Autentikasi Pengguna
+// Uji daftar dan login user baru
 echo "1. Menguji Autentikasi & Registrasi User...\n";
 $testUser = 'tester_' . time();
 $testPass = 'password123';
 $testFullName = 'Akun Tester';
 
-// Register
 $stmt = $pdo->prepare("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, 'user', ?)");
 $stmt->execute([$testUser, $testPass, $testFullName]);
 $testerId = (int)$pdo->lastInsertId();
 assert_true($testerId > 0, "Registrasi user baru berhasil (ID: $testerId)");
 
-// Login test
 $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
 $stmt->execute([$testUser]);
 $loggedUser = $stmt->fetch();
 assert_true($loggedUser && $loggedUser['password'] === $testPass, "Verifikasi login user berhasil dengan plain text password");
 
-// 2. Test CRUD Event oleh Organizer
+// Uji tambah, baca, dan ubah event oleh organizer
 echo "\n2. Menguji CRUD Event oleh Organizer...\n";
-$organizerId = 2; // Akun 'senjasuara'
+$organizerId = 2;
 $testEventName = 'Konser Akustik Uji Coba ' . time();
 $testDate = date('Y-m-d', strtotime('+7 days'));
 $testTime = '20:00 WIB';
@@ -45,19 +41,16 @@ $testLocation = 'M Bloc Live House, Jakarta Selatan';
 $testPrice = 85000;
 $testSlots = 50;
 
-// CREATE Event
 $stmt = $pdo->prepare("INSERT INTO events (owner_id, name, date, time, location, price, slots, category, description) VALUES (?, ?, ?, ?, ?, ?, ?, 'Konser', 'Deskripsi uji coba')");
 $stmt->execute([$organizerId, $testEventName, $testDate, $testTime, $testLocation, $testPrice, $testSlots]);
 $eventId = (int)$pdo->lastInsertId();
 assert_true($eventId > 0, "Tambah event baru berhasil (ID: $eventId)");
 
-// READ Event
 $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
 $stmt->execute([$eventId]);
 $fetchedEvent = $stmt->fetch();
 assert_true($fetchedEvent && $fetchedEvent['name'] === $testEventName && $fetchedEvent['time'] === $testTime && $fetchedEvent['location'] === $testLocation, "Baca detail event beserta jam & lokasi berhasil");
 
-// UPDATE Event
 $updatedPrice = 90000;
 $updatedLocation = 'Gelora Bung Karno, Senayan';
 $stmt = $pdo->prepare("UPDATE events SET price = ?, location = ? WHERE id = ?");
@@ -67,7 +60,7 @@ $stmt->execute([$eventId]);
 $updatedRow = $stmt->fetch();
 assert_true((int)$updatedRow['price'] === $updatedPrice && $updatedRow['location'] === $updatedLocation, "Update harga dan lokasi event berhasil");
 
-// 3. Test Pemesanan Tiket & Pengurangan Slot
+// Uji pemesanan tiket dan pengurangan kuota secara atomik
 echo "\n3. Menguji Pemesanan Tiket & Transaksi Slot...\n";
 $qtyToBook = 3;
 $orderCode = generate_order_code();
@@ -84,7 +77,6 @@ $stmt = $pdo->prepare("
 $stmt->execute([$orderCode, $testerId, $eventId, $qtyToBook, $updatedPrice, $totalPrice]);
 $orderId = (int)$pdo->lastInsertId();
 
-// Simpan rincian ke tabel tickets
 $tStmt = $pdo->prepare("INSERT INTO tickets (order_id, event_id, ticket_code, purchase_price) VALUES (?, ?, ?, ?)");
 for ($i = 1; $i <= $qtyToBook; $i++) {
     $tStmt->execute([$orderId, $eventId, sprintf('%s-%02d', $orderCode, $i), $updatedPrice]);
@@ -93,18 +85,16 @@ $pdo->commit();
 
 assert_true($orderId > 0, "Insert order tiket berhasil (Kode: $orderCode, ID: $orderId)");
 
-// Verifikasi isi tabel tickets
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE order_id = ?");
 $stmt->execute([$orderId]);
 assert_true((int)$stmt->fetchColumn() === $qtyToBook, "Tabel 'tickets' berhasil menampung $qtyToBook tiket individual");
 
-// Cek pengurangan slot
 $stmt = $pdo->prepare("SELECT slots FROM events WHERE id = ?");
 $stmt->execute([$eventId]);
 $remainingSlots = (int)$stmt->fetchColumn();
 assert_true($remainingSlots === ($testSlots - $qtyToBook), "Slot tiket berkurang dengan benar ($testSlots -> $remainingSlots)");
 
-// 4. Test Organizer Konfirmasi Order
+// Uji konfirmasi order oleh organizer
 echo "\n4. Menguji Organizer Menerima Pesanan...\n";
 $stmt = $pdo->prepare("UPDATE orders SET status = 'berhasil' WHERE id = ?");
 $stmt->execute([$orderId]);
@@ -113,7 +103,7 @@ $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
 $stmt->execute([$orderId]);
 assert_true($stmt->fetchColumn() === 'berhasil', "Organizer berhasil mengubah status pesanan menjadi 'berhasil'");
 
-// 5. Test Pengajuan Organizer & Approval oleh Admin
+// Uji pengajuan organizer sampai disetujui admin
 echo "\n5. Menguji Pengajuan Calon Organizer & Approval Admin...\n";
 $appEventName = 'Festival Budaya Mahasiswa';
 $appTime = '16:00 WIB';
@@ -126,7 +116,6 @@ $stmt->execute([$testerId, $testFullName, $appEventName, date('Y-m-d', strtotime
 $appId = (int)$pdo->lastInsertId();
 assert_true($appId > 0, "Pengajuan organizer berhasil disimpan dengan status 'pending'");
 
-// Admin Approve
 $pdo->beginTransaction();
 $pdo->prepare("UPDATE applications SET status = 'approved' WHERE id = ?")->execute([$appId]);
 $pdo->prepare("UPDATE users SET role = 'organizer', organization = 'Komunitas Seni Kampus' WHERE id = ?")->execute([$testerId]);
@@ -148,7 +137,7 @@ $stmt->execute([$newFirstEventId]);
 $firstEvt = $stmt->fetch();
 assert_true($firstEvt['time'] === $appTime && $firstEvt['location'] === $appLocation, "Event perdana mewarisi jam & lokasi pengajuan dengan akurat");
 
-// 6. Test DELETE Event
+// Uji hapus event
 echo "\n6. Menguji Hapus Event oleh Organizer...\n";
 $stmt = $pdo->prepare("DELETE FROM events WHERE id = ?");
 $stmt->execute([$newFirstEventId]);
@@ -156,25 +145,22 @@ $stmt = $pdo->prepare("SELECT id FROM events WHERE id = ?");
 $stmt->execute([$newFirstEventId]);
 assert_true(!$stmt->fetch(), "Event berhasil dihapus dari database");
 
-// 7. Test CRUD Rekening Pembayaran Organizer (Tabel `payment`)
+// Uji tambah, isolasi, dan hapus rekening pembayaran organizer
 echo "\n7. Menguji CRUD Rekening Pembayaran Organizer (Tabel `payment`)...\n";
 $testBank = 'Bank BCA';
 $testAccNum = '8820999123';
 $testAccName = 'Tester Organizer';
 
-// Create
 $stmt = $pdo->prepare("INSERT INTO payment (user_id, bank_name, account_number, account_name, is_active) VALUES (?, ?, ?, ?, 1)");
 $stmt->execute([$testerId, $testBank, $testAccNum, $testAccName]);
 $paymentId = (int)$pdo->lastInsertId();
 assert_true($paymentId > 0, "Tambah rekening pembayaran baru berhasil (ID: $paymentId)");
 
-// Read & Verify Isolation per Organizer
 $stmt = $pdo->prepare("SELECT * FROM payment WHERE user_id = ?");
 $stmt->execute([$testerId]);
 $testerAccounts = $stmt->fetchAll();
 assert_true(count($testerAccounts) === 1 && $testerAccounts[0]['account_number'] === $testAccNum, "Rekening organizer berhasil dibaca secara terisolasi");
 
-// Cek bahwa organizer 'senjasuara' (ID: 2) memiliki rekening berbeda dengan 'jelajah' (ID: 3)
 $stmt = $pdo->prepare("SELECT account_number FROM payment WHERE user_id = 2");
 $stmt->execute();
 $senjaAccs = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -186,14 +172,13 @@ $jelajahAccs = $stmt->fetchAll(PDO::FETCH_COLUMN);
 $hasIntersection = !empty(array_intersect($senjaAccs, $jelajahAccs));
 assert_true(!$hasIntersection && count($senjaAccs) > 0 && count($jelajahAccs) > 0, "Verifikasi multi-organizer: rekening senjasuara dan jelajah berbeda");
 
-// Delete
 $stmt = $pdo->prepare("DELETE FROM payment WHERE id = ? AND user_id = ?");
 $stmt->execute([$paymentId, $testerId]);
 $stmt = $pdo->prepare("SELECT id FROM payment WHERE id = ?");
 $stmt->execute([$paymentId]);
 assert_true(!$stmt->fetch(), "Rekening pembayaran berhasil dihapus dari database");
 
-// Cleanup test records
+// Bersihin data sisa pengujian
 $pdo->prepare("DELETE FROM orders WHERE id = ?")->execute([$orderId]);
 $pdo->prepare("DELETE FROM events WHERE id = ?")->execute([$eventId]);
 $pdo->prepare("DELETE FROM applications WHERE id = ?")->execute([$appId]);

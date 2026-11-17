@@ -1,7 +1,5 @@
 <?php
-/**
- * Handler CRUD Event & Pembaruan Status Order (Organizer & Admin)
- */
+// Proses CRUD event dan update status pesanan oleh organizer atau admin
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -30,10 +28,17 @@ if ($action === 'create') {
         exit;
     }
 
+    $imgResult = handle_event_image_upload('event_image', 'event', true, null);
+    if (!$imgResult['ok']) {
+        set_flash('error', $imgResult['error']);
+        header('Location: ../organizer.php');
+        exit;
+    }
+
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO events (owner_id, name, date, time, location, price, slots, category, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO events (owner_id, name, date, time, location, price, slots, category, description, image_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $currentUser['id'],
@@ -44,20 +49,24 @@ if ($action === 'create') {
             $price,
             $slots,
             $category ?: 'Konser',
-            $description
+            $description,
+            $imgResult['filename']
         ]);
 
         set_flash('success', 'Event "' . $name . '" berhasil diterbitkan!');
         header('Location: ../organizer.php');
         exit;
     } catch (Exception $e) {
+        if (!empty($imgResult['uploaded_new']) && !empty($imgResult['filename'])) {
+            @unlink(__DIR__ . '/../uploads/events/' . basename($imgResult['filename']));
+        }
         set_flash('error', 'Gagal menambahkan event: ' . $e->getMessage());
         header('Location: ../organizer.php');
         exit;
     }
 
 } elseif ($action === 'update') {
-    $eventId = (int)($_POST['event_id'] ?? 0);
+    $eventId = filter_var($_POST['event_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
     $name = trim($_POST['name'] ?? '');
     $date = trim($_POST['date'] ?? '');
     $time = trim($_POST['time'] ?? '19:00 WIB');
@@ -73,8 +82,8 @@ if ($action === 'create') {
         exit;
     }
 
+    $imgResult = ['uploaded_new' => false, 'filename' => null];
     try {
-        // Cek hak akses event
         $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
         $stmt->execute([$eventId]);
         $event = $stmt->fetch();
@@ -91,9 +100,17 @@ if ($action === 'create') {
             exit;
         }
 
+        $existingImg = $event['image_path'] ?? null;
+        $imgResult = handle_event_image_upload('event_image', 'event', empty($existingImg), $existingImg);
+        if (!$imgResult['ok']) {
+            set_flash('error', $imgResult['error']);
+            header("Location: {$redirectTarget}");
+            exit;
+        }
+
         $update = $pdo->prepare("
             UPDATE events 
-            SET name = ?, date = ?, time = ?, location = ?, price = ?, slots = ?, category = ?, description = ?
+            SET name = ?, date = ?, time = ?, location = ?, price = ?, slots = ?, category = ?, description = ?, image_path = ?
             WHERE id = ?
         ");
         $update->execute([
@@ -105,6 +122,7 @@ if ($action === 'create') {
             $slots, 
             $category, 
             $description, 
+            $imgResult['filename'],
             $eventId
         ]);
 
@@ -112,30 +130,42 @@ if ($action === 'create') {
         header("Location: {$redirectTarget}");
         exit;
     } catch (Exception $e) {
+        if (!empty($imgResult['uploaded_new']) && !empty($imgResult['filename'])) {
+            @unlink(__DIR__ . '/../uploads/events/' . basename($imgResult['filename']));
+        }
         set_flash('error', 'Gagal menyimpan perubahan event: ' . $e->getMessage());
         header("Location: {$redirectTarget}");
         exit;
     }
 
 } elseif ($action === 'delete') {
-    require_role('organizer', '../login.php');
+    require_role(['organizer', 'admin'], '../login.php');
 
-    $eventId = (int)($_GET['id'] ?? ($_POST['event_id'] ?? 0));
+    $rawEventId = $_GET['id'] ?? ($_POST['event_id'] ?? '');
+    $eventId = filter_var($rawEventId, FILTER_VALIDATE_INT) ?: 0;
 
     if ($eventId <= 0) {
         set_flash('error', 'ID event tidak valid.');
-        header('Location: ../organizer.php');
+        header("Location: {$redirectTarget}");
         exit;
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ? AND owner_id = ?");
-        $stmt->execute([$eventId, $currentUser['id']]);
+        if ($currentUser['role'] === 'admin') {
+            $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
+            $stmt->execute([$eventId]);
+        } else {
+            $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ? AND owner_id = ?");
+            $stmt->execute([$eventId, $currentUser['id']]);
+        }
         $event = $stmt->fetch();
 
         if (!$event) {
-            set_flash('error', 'Hanya organizer pemilik yang dapat menghapus event ini.');
-            header('Location: ../organizer.php');
+            $msg = $currentUser['role'] === 'admin'
+                ? 'Event tidak ditemukan.'
+                : 'Hanya organizer pemilik yang dapat menghapus event ini.';
+            set_flash('error', $msg);
+            header("Location: {$redirectTarget}");
             exit;
         }
 
@@ -143,18 +173,18 @@ if ($action === 'create') {
         $del->execute([$eventId]);
 
         set_flash('success', 'Event "' . $event['name'] . '" telah berhasil dihapus.');
-        header('Location: ../organizer.php');
+        header("Location: {$redirectTarget}");
         exit;
     } catch (Exception $e) {
         set_flash('error', 'Gagal menghapus event: ' . $e->getMessage());
-        header('Location: ../organizer.php');
+        header("Location: {$redirectTarget}");
         exit;
     }
 
 } elseif ($action === 'update_order_status') {
     require_role('organizer', '../login.php');
 
-    $orderId = (int)($_POST['order_id'] ?? 0);
+    $orderId = filter_var($_POST['order_id'] ?? '', FILTER_VALIDATE_INT) ?: 0;
     $newStatus = trim($_POST['status'] ?? '');
 
     if ($orderId <= 0 || !in_array($newStatus, ['berhasil', 'dibatalkan'], true)) {
@@ -166,7 +196,7 @@ if ($action === 'create') {
     try {
         $pdo->beginTransaction();
 
-        // Verifikasi kepemilikan event terkait order
+        // Kunci baris order biar kuota tiket nggak balapan kalau dibatalkan bersamaan
         $stmt = $pdo->prepare("
             SELECT o.*, e.owner_id, e.id AS evt_id 
             FROM orders o 
@@ -181,7 +211,7 @@ if ($action === 'create') {
             throw new Exception('Anda tidak memiliki wewenang mengelola order ini.');
         }
 
-        // Jika dibatalkan dan status sebelumnya bukan dibatalkan, kembalikan kuota tiket
+        // Balikin kuota tiket hanya kalau status sebelumnya belum dibatalkan
         if ($newStatus === 'dibatalkan' && $order['status'] !== 'dibatalkan') {
             $restore = $pdo->prepare("UPDATE events SET slots = slots + ? WHERE id = ?");
             $restore->execute([$order['quantity'], $order['evt_id']]);
@@ -190,7 +220,6 @@ if ($action === 'create') {
         $update = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
         $update->execute([$newStatus, $orderId]);
 
-        // Perbarui status seluruh tiket terkait di tabel 'tickets'
         $ticketStatus = ($newStatus === 'dibatalkan') ? 'cancelled' : 'valid';
         $updateTickets = $pdo->prepare("UPDATE tickets SET status = ? WHERE order_id = ?");
         $updateTickets->execute([$ticketStatus, $orderId]);

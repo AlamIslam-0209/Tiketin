@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth_check.php';
 
-// Jika sudah login, langsung alihkan ke home
+// Kalau sudah login, langsung arahin ke halaman sesuai role
 if (is_logged_in()) {
     header('Location: ' . home_for(current_user()['role']));
     exit;

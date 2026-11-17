@@ -1,7 +1,5 @@
 <?php
-/**
- * Handler Proses Autentikasi (Login & Register)
- */
+// Proses login dan pendaftaran akun baru
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth_check.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -29,8 +27,9 @@ if ($action === 'login') {
         $stmt->execute([$username]);
         $user = $stmt->fetch();
 
-        // Verifikasi password (Teks polos sesuai kesepakatan pengujian PRD)
+        // Sengaja pakai plain text sesuai kesepakatan pengujian aplikasi ini
         if ($user && $user['password'] === $password) {
+            session_regenerate_id(true);
             $_SESSION['user'] = [
                 'id'           => $user['id'],
                 'username'     => $user['username'],
@@ -41,9 +40,16 @@ if ($action === 'login') {
 
             set_flash('success', 'Selamat datang kembali, ' . $user['full_name'] . '!');
 
-            // Cek apakah ada redirect tujuan
-            $target = $_POST['redirect'] ?? '';
-            if (!empty($target) && strpos($target, 'http') === false) {
+            // Pastikan redirect cuma boleh ke path internal yang aman
+            $target = trim($_POST['redirect'] ?? '');
+            $isSafeRedirect = $target !== ''
+                && !str_contains($target, ':')
+                && !str_contains($target, '//')
+                && !str_starts_with($target, '/')
+                && !str_starts_with($target, '\\')
+                && !str_contains($target, '..')
+                && preg_match('/^[a-zA-Z0-9_\-\.\/#?=&]+$/', $target) === 1;
+            if ($isSafeRedirect) {
                 header("Location: ../{$target}");
             } else {
                 header("Location: ../" . home_for($user['role']));
@@ -72,7 +78,6 @@ if ($action === 'login') {
     }
 
     try {
-        // Cek duplikasi username
         $checkStmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
         $checkStmt->execute([$username]);
         if ($checkStmt->fetch()) {
@@ -81,12 +86,12 @@ if ($action === 'login') {
             exit;
         }
 
-        // Simpan user baru (role: user, plain text password)
         $insertStmt = $pdo->prepare("INSERT INTO users (username, password, role, full_name) VALUES (?, ?, 'user', ?)");
         $insertStmt->execute([$username, $password, $fullName]);
         $newUserId = (int)$pdo->lastInsertId();
 
-        // Otomatis login
+        // Pakai session ID baru biar aman dari session fixation
+        session_regenerate_id(true);
         $_SESSION['user'] = [
             'id'           => $newUserId,
             'username'     => $username,

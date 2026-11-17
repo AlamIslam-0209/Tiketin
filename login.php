@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth_check.php';
 
-// Jika sudah login, langsung alihkan ke dashboard/home yang sesuai
+// Kalau sudah login, langsung arahin ke halaman sesuai role
 if (is_logged_in()) {
     header('Location: ' . home_for(current_user()['role']));
     exit;
@@ -34,7 +34,6 @@ require_once __DIR__ . '/includes/header.php';
 
         <p class="auth-switch">Belum punya akun? <a href="register.php">Daftar sekarang</a></p>
 
-        <!-- Informasi Akun Demo untuk Pengujian Cepat -->
         <details class="demo-accounts" open>
             <summary>Akun Demo Tersedia</summary>
             <p>

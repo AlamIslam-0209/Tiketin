@@ -13,7 +13,7 @@ if (isset($pdo)) {
         $stmt = $pdo->query("SELECT e.*, u.organization, u.full_name AS organizer_name FROM events e LEFT JOIN users u ON e.owner_id = u.id ORDER BY e.date ASC");
         $events = $stmt->fetchAll();
 
-        // Ambil rekening pembayaran aktif milik seluruh organizer (tabel payment)
+        // Peta rekening aktif per organizer biar langsung tampil di modal bayar
         $stmtPay = $pdo->query("SELECT * FROM payment WHERE is_active = 1 ORDER BY id ASC");
         $allPay = $stmtPay->fetchAll();
         foreach ($allPay as $p) {
@@ -34,7 +34,6 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <main>
-    <!-- Hero Section -->
     <section class="hero container" id="home">
         <div class="hero-copy">
             <p class="eyebrow">Satu tempat untuk semua momen</p>
@@ -53,101 +52,198 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <!-- Ticket Section -->
+    <?php
+    $categoryOrder = ['Konser', 'Wisata', 'Seminar', 'Lainnya'];
+    $categoryCounts = array_fill_keys($categoryOrder, 0);
+    foreach ($events as $ev) {
+        $evCat = $ev['category'] ?: 'Lainnya';
+        if (!array_key_exists($evCat, $categoryCounts)) {
+            $evCat = 'Lainnya';
+        }
+        $categoryCounts[$evCat]++;
+    }
+    $totalEvents = count($events);
+    ?>
     <section class="tickets-section container" id="tickets" aria-labelledby="ticketsTitle">
         <div class="section-heading">
-            <div>
+            <div class="section-copy">
                 <p class="eyebrow">Koleksi tiket</p>
                 <h2 id="ticketsTitle">Jelajahi event pilihan.</h2>
-                <p class="section-description">
-                    Cari berdasarkan nama atau pilih kategori yang kamu mau.
+                <p class="section-intro">
+                    Cari berdasarkan nama atau lokasi, lalu pilih kategori yang kamu mau.
                 </p>
             </div>
 
-            <div class="filters" role="search" aria-label="Pencarian dan filter event">
-                <input id="eventSearch" type="search" placeholder="Cari nama event..." aria-label="Cari event" />
-                <select id="categoryFilter" aria-label="Filter berdasarkan kategori">
-                    <option value="">Semua kategori</option>
-                    <option value="Konser">Konser</option>
-                    <option value="Wisata">Wisata</option>
-                    <option value="Seminar">Seminar</option>
-                    <option value="Lainnya">Lainnya</option>
-                </select>
+            <div class="section-search" role="search" aria-label="Pencarian event">
+                <label class="sr-only" for="eventSearch">Cari nama atau lokasi event</label>
+                <div class="search-field">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <input id="eventSearch" type="search" placeholder="Cari nama atau lokasi event..." autocomplete="off" />
+                    <button type="button" id="clearSearchBtn" class="search-clear" aria-label="Hapus kata kunci pencarian" hidden>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="ticket-grid" id="ticketGrid" aria-live="polite">
+        <div class="ticket-toolbar">
+            <div class="category-chips" id="categoryChips" role="group" aria-label="Filter berdasarkan kategori">
+                <button type="button"
+                        class="filter-chip is-active"
+                        data-category=""
+                        aria-pressed="true"
+                        aria-label="Semua kategori, <?= $totalEvents ?> event">
+                    <span class="chip-label">Semua</span>
+                    <span class="chip-count" aria-hidden="true"><?= $totalEvents ?></span>
+                </button>
+                <?php foreach ($categoryOrder as $catName): $catTotal = $categoryCounts[$catName]; ?>
+                    <button type="button"
+                            class="filter-chip<?= $catTotal === 0 ? ' is-zero' : '' ?>"
+                            data-category="<?= htmlspecialchars($catName) ?>"
+                            aria-pressed="false"
+                            aria-label="<?= htmlspecialchars($catName) ?>, <?= $catTotal ?> event">
+                        <span class="chip-label"><?= htmlspecialchars($catName) ?></span>
+                        <span class="chip-count" aria-hidden="true"><?= $catTotal ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="results-meta">
+                <p class="results-summary" id="resultsSummary" role="status" aria-live="polite" aria-atomic="true">
+                    Menampilkan <strong><?= $totalEvents ?></strong> event
+                </p>
+                <button type="button" id="inlineResetBtn" class="results-reset" hidden>Reset filter</button>
+            </div>
+        </div>
+
+        <div class="ticket-grid" id="ticketGrid">
             <?php if (empty($events)): ?>
                 <p class="empty-state">Belum ada event yang tersedia saat ini.</p>
             <?php else: ?>
                 <?php foreach ($events as $event): 
-                    $category = $event['category'] ?: 'Lainnya';
-                    $catClass = in_array($category, ['Konser', 'Wisata', 'Seminar']) ? strtolower($category) : 'other';
-                    $catIcon = $category === 'Konser' ? '♪' : ($category === 'Wisata' ? '◇' : ($category === 'Seminar' ? '▦' : '✦'));
-                    $isAvailable = $event['slots'] > 0;
+                    $rawCategory = $event['category'] ?: 'Lainnya';
+                    $category = $rawCategory;
+                    $filterCategory = in_array($rawCategory, ['Konser', 'Wisata', 'Seminar'], true) ? $rawCategory : 'Lainnya';
+                    $catKey = normalize_event_category_key($category);
+                    $slots = (int)$event['slots'];
+                    $isAvailable = $slots > 0;
+                    $ticketStatusClass = !$isAvailable ? 'sold-out' : ($slots <= 10 ? 'low-stock' : '');
+                    $ticketStatusText = !$isAvailable ? 'Tiket habis' : ($slots <= 10 ? "Sisa {$slots} tiket" : "{$slots} tiket tersedia");
                     $eventTime = $event['time'] ?: '19:00 WIB';
                     $eventLocation = $event['location'] ?: 'Lokasi diumumkan segera';
+                    $imageUrl = resolve_event_image_url($event['image_path'] ?? null);
+                    $fallbackSvgUrl = get_category_svg_data_uri($category);
                 ?>
-                    <article class="ticket-card" 
+                    <article class="ticket-card has-media" 
                              data-name="<?= htmlspecialchars(strtolower($event['name'])) ?>" 
-                             data-category="<?= htmlspecialchars($category) ?>">
-                        <div class="card-topline">
-                            <span class="category-icon <?= $catClass ?>" aria-hidden="true"><?= $catIcon ?></span>
-                            <span class="category-label"><?= htmlspecialchars($category) ?></span>
-                        </div>
-                        <h3><?= htmlspecialchars($event['name']) ?></h3>
-                        <p><?= htmlspecialchars($event['description'] ?: 'Temukan pengalaman seru di event ini.') ?></p>
-
-                        <div class="card-event-info">
-                            <div class="info-item">
-                                <span class="info-icon" aria-hidden="true">📍</span>
-                                <span class="info-text" title="<?= htmlspecialchars($eventLocation) ?>"><?= htmlspecialchars($eventLocation) ?></span>
+                             data-location="<?= htmlspecialchars(strtolower($eventLocation)) ?>"
+                             data-category="<?= htmlspecialchars($filterCategory) ?>">
+                        <div class="card-media-16x9 <?= $imageUrl ? 'is-zoomable' : 'is-fallback' ?>"
+                             <?php if ($imageUrl): ?>
+                             role="button"
+                             tabindex="0"
+                             aria-label="Perbesar foto acara <?= htmlspecialchars($event['name']) ?>"
+                             onclick="openImageLightbox(<?= htmlspecialchars(json_encode($imageUrl)) ?>, <?= htmlspecialchars(json_encode($event['name'])) ?>)"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openImageLightbox(<?= htmlspecialchars(json_encode($imageUrl)) ?>, <?= htmlspecialchars(json_encode($event['name'])) ?>);}"
+                             <?php endif; ?>>
+                            <?php if ($imageUrl): ?>
+                                <img src="<?= htmlspecialchars($imageUrl) ?>" alt="Foto acara <?= htmlspecialchars($event['name']) ?>" loading="lazy" />
+                            <?php else: ?>
+                                <?= render_event_category_svg($category) ?>
+                            <?php endif; ?>
+                            <div class="media-floating-top">
+                                <span class="media-cat-pill cat-<?= $catKey ?>">
+                                    <span class="cat-dot dot-<?= $catKey ?>" aria-hidden="true"></span>
+                                    <span><?= htmlspecialchars($category) ?></span>
+                                </span>
                             </div>
-                            <div class="info-item">
-                                <span class="info-icon" aria-hidden="true">🕒</span>
-                                <span class="info-text"><?= htmlspecialchars($eventTime) ?></span>
-                            </div>
+                            <?php if ($imageUrl): ?>
+                                <span class="media-zoom-badge" aria-hidden="true">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                    <span>Perbesar</span>
+                                </span>
+                            <?php endif; ?>
                         </div>
 
-                        <div class="ticket-details">
-                            <strong><?= format_rupiah($event['price']) ?></strong>
-                            <span class="<?= $isAvailable ? '' : 'sold-out' ?>">
-                                <?= $isAvailable ? "{$event['slots']} tiket tersedia" : 'Tiket habis' ?>
-                            </span>
-                        </div>
-                        <div class="card-footer">
-                            <span class="event-meta">📅 <?= format_tanggal_id($event['date']) ?></span>
-                            <button class="button button-card order-button" 
-                                    type="button" 
-                                    <?= !$isAvailable ? 'disabled' : '' ?>
-                                    onclick="openOrderModal(<?= htmlspecialchars(json_encode([
-                                        'id' => (int)$event['id'],
-                                        'owner_id' => (int)$event['owner_id'],
-                                        'name' => $event['name'],
-                                        'price' => (int)$event['price'],
-                                        'priceFormatted' => format_rupiah($event['price']),
-                                        'slots' => (int)$event['slots'],
-                                        'dateFormatted' => format_tanggal_id($event['date']),
-                                        'time' => $eventTime,
-                                        'location' => $eventLocation,
-                                        'category' => $category
-                                    ])) ?>)">
-                                <?= $isAvailable ? 'Pesan' : 'Habis' ?>
-                            </button>
+                        <div class="ticket-card-body">
+                            <h3><?= htmlspecialchars($event['name']) ?></h3>
+                            <p><?= htmlspecialchars($event['description'] ?: 'Temukan pengalaman seru di event ini.') ?></p>
+
+                            <div class="card-event-info">
+                                <div class="info-item">
+                                    <span class="info-icon"><?= render_card_meta_icon('map-pin', 14) ?></span>
+                                    <span class="info-text" title="<?= htmlspecialchars($eventLocation) ?>"><?= htmlspecialchars($eventLocation) ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-icon"><?= render_card_meta_icon('clock', 14) ?></span>
+                                    <span class="info-text"><?= htmlspecialchars($eventTime) ?></span>
+                                </div>
+                            </div>
+
+                            <div class="ticket-details">
+                                <strong><?= format_rupiah($event['price']) ?></strong>
+                                <span class="<?= $ticketStatusClass ?>">
+                                    <?= htmlspecialchars($ticketStatusText) ?>
+                                </span>
+                            </div>
+                            <div class="card-footer">
+                                <span class="event-meta"><?= render_card_meta_icon('calendar', 14) ?><span><?= format_tanggal_id($event['date']) ?></span></span>
+                                <button class="button button-card order-button" 
+                                        type="button" 
+                                        <?= !$isAvailable ? 'disabled' : '' ?>
+                                        onclick="openOrderModal(<?= htmlspecialchars(json_encode([
+                                            'id' => (int)$event['id'],
+                                            'owner_id' => (int)$event['owner_id'],
+                                            'name' => $event['name'],
+                                            'price' => (int)$event['price'],
+                                            'priceFormatted' => format_rupiah($event['price']),
+                                            'slots' => (int)$event['slots'],
+                                            'dateFormatted' => format_tanggal_id($event['date']),
+                                            'time' => $eventTime,
+                                            'location' => $eventLocation,
+                                            'category' => $category,
+                                            'imageUrl' => $imageUrl,
+                                            'fallbackSvgUrl' => $fallbackSvgUrl
+                                        ])) ?>)">
+                                    <?= $isAvailable ? 'Pesan' : 'Habis' ?>
+                                </button>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
-        <p id="noMatchesText" class="empty-state" style="display:none;">Tidak ada event yang cocok dengan pencarian.</p>
+
+        <div id="noMatchesBox" class="catalog-empty-state" hidden>
+            <div class="catalog-empty-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                    <path d="M8 11h6"></path>
+                </svg>
+            </div>
+            <h3>Event tidak ditemukan</h3>
+            <p id="noMatchesText">Tidak ada event yang cocok dengan pencarianmu saat ini.</p>
+            <button type="button" class="button button-quiet" id="resetFiltersBtn">Reset pencarian &amp; filter</button>
+        </div>
     </section>
 </main>
 
-<!-- Modal Pemesanan Tiket & Pembayaran -->
 <div class="modal-backdrop" id="orderModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
     <div class="modal">
         <button class="modal-close" id="closeModal" type="button" aria-label="Tutup formulir pemesanan" onclick="closeOrderModal()">×</button>
         <h2 id="modalTitle" style="font-size: 1.6rem; margin: 0 0 16px;">Konfirmasi Pesanan</h2>
+
+        <div class="modal-event-media" id="modalEventMedia" hidden>
+            <img id="modalEventMediaImg" src="" alt="Foto acara" />
+            <span class="media-zoom-chip" id="modalEventZoomChip" hidden>Klik untuk perbesar</span>
+        </div>
 
         <?php if (!is_logged_in()): ?>
             <div style="margin-bottom: 10px;">
@@ -177,11 +273,9 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Akun admin tidak dapat melakukan pemesanan tiket acara.</p>
             </div>
         <?php else: ?>
-            <!-- Multi-step Form -->
             <form id="orderFormMain" action="proses/order_process.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="event_id" id="hiddenEventId" value="" />
 
-                <!-- LANGKAH 1: Kuantitas Tiket -->
                 <div id="step1Section">
                     <div style="margin-bottom: 10px;">
                         <h3 id="selectedEvent" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--ink);">-</h3>
@@ -215,7 +309,6 @@ require_once __DIR__ . '/includes/header.php';
                     </button>
                 </div>
 
-                <!-- LANGKAH 2: Metode Bayar & Upload Bukti -->
                 <div id="step2Section" hidden>
                     <div class="payment-summary">
                         <div class="summary-row">
@@ -247,11 +340,10 @@ require_once __DIR__ . '/includes/header.php';
                         </select>
                     </div>
 
-                    <!-- Dynamic Payment Detail Box (Rekening / QRIS) -->
                     <div id="paymentDetailBox" style="margin-top: 14px; margin-bottom: 16px; display: none;"></div>
 
                     <div class="form-group">
-                        <label>Unggah bukti transfer (JPG / PNG / WEBP, maks. 3MB)</label>
+                        <label>Unggah bukti transfer (JPG / PNG / WEBP, maks. 5MB)</label>
                         <div class="upload-area" id="uploadArea" onclick="document.getElementById('proofUpload').click()">
                             <input type="file" id="proofUpload" name="payment_proof" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewProofImage(this)" required />
                             <div class="upload-placeholder" id="uploadPlaceholder">
@@ -276,26 +368,114 @@ require_once __DIR__ . '/includes/header.php';
 <script>
 let currentEvent = null;
 
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function buildFallbackQrSvgDataUri() {
+    const size = 21;
+    const rects = [];
+    const inFinder = (r, c, top, left) => {
+        const dr = r - top;
+        const dc = c - left;
+        if (dr < 0 || dr > 6 || dc < 0 || dc > 6) return null;
+        if (dr === 0 || dr === 6 || dc === 0 || dc === 6) return true;
+        if (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4) return true;
+        return false;
+    };
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const f1 = inFinder(r, c, 0, 0);
+            const f2 = inFinder(r, c, 0, size - 7);
+            const f3 = inFinder(r, c, size - 7, 0);
+            let dark = f1 !== null ? f1 : (f2 !== null ? f2 : (f3 !== null ? f3 : false));
+            if (f1 === null && f2 === null && f3 === null) {
+                if ((r === 7 && c < 8) || (c === 7 && r < 8) || (r === 7 && c >= size - 8) || (c === size - 8 && r < 8) || (r === size - 8 && c < 8) || (c === 7 && r >= size - 8)) {
+                    dark = false;
+                } else {
+                    dark = ((r * 7 + c * 11 + r * c) % 3 === 0) || (r === 6 && c % 2 === 0) || (c === 6 && r % 2 === 0);
+                }
+            }
+            if (dark) {
+                rects.push(`<rect x="${c + 2}" y="${r + 2}" width="1" height="1" fill="#20252a"/>`);
+            }
+        }
+    }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" shape-rendering="crispEdges"><rect width="25" height="25" fill="#ffffff"/>${rects.join('')}</svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
 function formatRupiahJs(number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
 }
 
-// Filter Pencarian & Kategori
 const searchInput = document.getElementById('eventSearch');
-const categorySelect = document.getElementById('categoryFilter');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+const chipButtons = document.querySelectorAll('#categoryChips .filter-chip');
 const cards = document.querySelectorAll('.ticket-card');
-const noMatches = document.getElementById('noMatchesText');
+const resultsSummary = document.getElementById('resultsSummary');
+const inlineResetBtn = document.getElementById('inlineResetBtn');
+const noMatchesBox = document.getElementById('noMatchesBox');
+const noMatchesText = document.getElementById('noMatchesText');
+const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+let activeCategory = '';
+
+function updateChipStates() {
+    chipButtons.forEach(btn => {
+        const isActive = (btn.dataset.category || '') === activeCategory;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function updateResultsSummary(visibleCount, totalCount, isFiltered) {
+    if (resultsSummary) {
+        resultsSummary.replaceChildren();
+        resultsSummary.append('Menampilkan ');
+        const strong = document.createElement('strong');
+        strong.textContent = String(visibleCount);
+        resultsSummary.append(strong);
+        resultsSummary.append(isFiltered ? ` dari ${totalCount} event` : ' event');
+    }
+    if (inlineResetBtn) {
+        inlineResetBtn.hidden = !isFiltered;
+    }
+}
+
+function updateEmptyStateMessage(rawQuery, category) {
+    if (!noMatchesText) return;
+    if (rawQuery && category) {
+        noMatchesText.textContent = `Tidak ada event "${rawQuery}" dalam kategori ${category}.`;
+    } else if (rawQuery) {
+        noMatchesText.textContent = `Tidak ada event atau lokasi yang cocok dengan "${rawQuery}".`;
+    } else if (category) {
+        noMatchesText.textContent = `Belum ada event untuk kategori ${category} saat ini.`;
+    } else {
+        noMatchesText.textContent = 'Tidak ada event yang cocok dengan pencarianmu saat ini.';
+    }
+}
 
 function filterTickets() {
-    const query = searchInput.value.trim().toLowerCase();
-    const category = categorySelect.value;
+    const rawQuery = searchInput ? searchInput.value.trim() : '';
+    const query = rawQuery.toLowerCase();
+    const totalCount = cards.length;
     let visibleCount = 0;
 
+    if (clearSearchBtn && searchInput) {
+        clearSearchBtn.hidden = searchInput.value.length === 0;
+    }
+
     cards.forEach(card => {
-        const name = card.dataset.name;
-        const cat = card.dataset.category;
-        const matchesQuery = !query || name.includes(query);
-        const matchesCategory = !category || cat === category;
+        const name = card.dataset.name || '';
+        const location = card.dataset.location || '';
+        const cat = card.dataset.category || '';
+        const matchesQuery = !query || name.includes(query) || location.includes(query);
+        const matchesCategory = !activeCategory || cat === activeCategory;
 
         if (matchesQuery && matchesCategory) {
             card.style.display = '';
@@ -305,15 +485,61 @@ function filterTickets() {
         }
     });
 
-    if (noMatches) {
-        noMatches.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+    const isFiltered = Boolean(query || activeCategory);
+    updateResultsSummary(visibleCount, totalCount, isFiltered);
+
+    if (noMatchesBox) {
+        const showEmpty = visibleCount === 0 && totalCount > 0;
+        noMatchesBox.hidden = !showEmpty;
+        if (showEmpty) {
+            updateEmptyStateMessage(rawQuery, activeCategory);
+        }
     }
 }
 
-if (searchInput) searchInput.addEventListener('input', filterTickets);
-if (categorySelect) categorySelect.addEventListener('change', filterTickets);
+function resetAllFilters(focusTarget) {
+    if (searchInput) searchInput.value = '';
+    activeCategory = '';
+    updateChipStates();
+    filterTickets();
+    if (focusTarget) focusTarget.focus();
+}
 
-// Modal Handling
+if (searchInput) {
+    searchInput.addEventListener('input', filterTickets);
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchInput.value.length > 0) {
+            e.preventDefault();
+            searchInput.value = '';
+            filterTickets();
+        }
+    });
+}
+
+if (clearSearchBtn && searchInput) {
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        filterTickets();
+        searchInput.focus();
+    });
+}
+
+chipButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.category || '';
+        updateChipStates();
+        filterTickets();
+    });
+});
+
+if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', () => resetAllFilters(searchInput));
+}
+
+if (inlineResetBtn) {
+    inlineResetBtn.addEventListener('click', () => resetAllFilters(chipButtons[0] || searchInput));
+}
+
 const modal = document.getElementById('orderModal');
 const qtyInput = document.getElementById('ticketQuantity');
 const organizerPaymentAccounts = <?= json_encode($organizerPayments) ?>;
@@ -322,6 +548,21 @@ function openOrderModal(eventData) {
     currentEvent = eventData;
     const hiddenId = document.getElementById('hiddenEventId');
     if (hiddenId) hiddenId.value = eventData.id;
+
+    const modalMedia = document.getElementById('modalEventMedia');
+    const modalMediaImg = document.getElementById('modalEventMediaImg');
+    const modalZoomChip = document.getElementById('modalEventZoomChip');
+    if (modalMedia && modalMediaImg) {
+        const hasRealImage = Boolean(eventData.imageUrl);
+        modalMediaImg.src = hasRealImage ? eventData.imageUrl : (eventData.fallbackSvgUrl || '');
+        modalMediaImg.alt = `Foto acara ${eventData.name || ''}`;
+        modalMedia.classList.toggle('is-zoomable', hasRealImage);
+        if (modalZoomChip) modalZoomChip.hidden = !hasRealImage;
+        modalMedia.onclick = hasRealImage
+            ? () => openImageLightbox(eventData.imageUrl, eventData.name)
+            : null;
+        modalMedia.hidden = false;
+    }
 
     document.querySelectorAll('#selectedEvent').forEach(el => el.textContent = eventData.name);
     document.querySelectorAll('#selectedPrice').forEach(el => el.textContent = eventData.priceFormatted);
@@ -372,8 +613,10 @@ if (qtyInput) {
 function goToStep1() {
     const s1 = document.getElementById('step1Section');
     const s2 = document.getElementById('step2Section');
+    const modalMedia = document.getElementById('modalEventMedia');
     if (s1) s1.hidden = false;
     if (s2) s2.hidden = true;
+    if (modalMedia) modalMedia.hidden = false;
 }
 
 function goToStep2() {
@@ -394,18 +637,16 @@ function goToStep2() {
     const totalPriceFormatted = formatRupiahJs(qty * currentEvent.price);
     document.getElementById('payTotalPrice').textContent = totalPriceFormatted;
 
-    // Populasi metode pembayaran milik organizer event ini
+    // Isi pilihan metode bayar khusus sesuai rekening organizer event ini
     const sel = document.getElementById('paymentMethod');
     if (sel) {
         sel.innerHTML = '<option value="">Pilih metode pembayaran</option>';
         
-        // Pilihan 1: QRIS
         const qrisOpt = document.createElement('option');
         qrisOpt.value = 'qris';
         qrisOpt.textContent = 'QRIS (Gopay / OVO / Dana / ShopeePay / BCA Mobile)';
         sel.appendChild(qrisOpt);
 
-        // Rekening bank milik organizer event ini
         const ownerId = currentEvent.owner_id;
         const accounts = organizerPaymentAccounts[ownerId] || [];
         accounts.forEach(acc => {
@@ -425,6 +666,8 @@ function goToStep2() {
         detailBox.innerHTML = '';
     }
 
+    const modalMedia = document.getElementById('modalEventMedia');
+    if (modalMedia) modalMedia.hidden = true;
     document.getElementById('step1Section').hidden = true;
     document.getElementById('step2Section').hidden = false;
 }
@@ -454,10 +697,10 @@ function renderPaymentDetail(selectEl) {
                     <span class="qris-sub">Semua e-wallet &amp; mobile banking</span>
                 </div>
                 <div class="qris-qr-container">
-                    <img src="${qrUrl}" alt="Kode QRIS Tiketin" class="qris-img" />
+                    <img src="${qrUrl}" alt="Kode QRIS Tiketin" class="qris-img" onerror="this.onerror=null; this.src=buildFallbackQrSvgDataUri();" />
                 </div>
                 <div class="qris-caption">
-                    <p style="margin:0; font-size: 0.95rem;"><strong>Total Bayar: ${totalPriceFormatted}</strong></p>
+                    <p style="margin:0; font-size: 0.95rem;"><strong>Total Bayar: ${escapeHtml(totalPriceFormatted)}</strong></p>
                     <p style="margin:4px 0 0; font-size:0.8rem; color:var(--muted); line-height: 1.4;">
                         Pindai kode QRIS di atas untuk menyelesaikan pesanan, lalu simpan tangkapan layar (screenshot) bukti pembayaran untuk diunggah di bawah.
                     </p>
@@ -471,23 +714,28 @@ function renderPaymentDetail(selectEl) {
         const accNumber = opt.dataset.acc || '-';
         const accName = opt.dataset.name || '-';
 
+        const safeBankName = escapeHtml(bankName);
+        const safeAccNumber = escapeHtml(accNumber);
+        const safeAccName = escapeHtml(accName);
+        const safeTotal = escapeHtml(totalPriceFormatted);
+
         detailBox.innerHTML = `
             <div class="payment-account-card">
                 <div class="account-card-top">
-                    <span class="account-bank-pill">${bankName}</span>
+                    <span class="account-bank-pill">${safeBankName}</span>
                     <span class="account-hint">Rekening Penyelenggara Acara</span>
                 </div>
                 <div class="account-number-group">
-                    <span class="account-number-text" id="accNumText">${accNumber}</span>
-                    <button type="button" class="button button-small copy-account-button" onclick="copyAccountNumber('${accNumber}', this)">
+                    <span class="account-number-text" id="accNumText">${safeAccNumber}</span>
+                    <button type="button" class="button button-small copy-account-button" data-acc="${safeAccNumber}" onclick="copyAccountNumber(this.dataset.acc, this)">
                         <span class="copy-icon">📋</span> Salin
                     </button>
                 </div>
                 <div class="account-owner-info">
-                    Atas Nama: <strong>${accName}</strong>
+                    Atas Nama: <strong>${safeAccName}</strong>
                 </div>
                 <div class="account-guide">
-                    💡 Silakan transfer sejumlah <strong>${totalPriceFormatted}</strong> ke rekening di atas, lalu unggah struk / bukti transfer di bawah.
+                    💡 Silakan transfer sejumlah <strong>${safeTotal}</strong> ke rekening di atas, lalu unggah struk / bukti transfer di bawah.
                 </div>
             </div>
         `;
@@ -550,8 +798,12 @@ function removeProofImage(e) {
     if (prev) prev.hidden = true;
 }
 
-// Close modal on Escape or clicking backdrop
+// Biarkan Esc menutup lightbox dulu kalau lagi terbuka di atas modal pesan
 window.addEventListener('keydown', (e) => {
+    const lightbox = document.getElementById('imageLightboxModal');
+    if (e.key === 'Escape' && lightbox && lightbox.classList.contains('is-open')) {
+        return;
+    }
     if (e.key === 'Escape' && modal && modal.classList.contains('is-open')) {
         closeOrderModal();
     }
