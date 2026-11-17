@@ -55,45 +55,45 @@ Tiketin/
 Seluruh checklist di bawah ini mendeskripsikan **fitur nyata yang sudah berjalan pada kode saat ini**:
 
 ### 🔵 Alam — Project Lead & Core Architect (`feat/core-architecture-alam`)
-- [] **Arsitektur Database**: Merancang skema tabel MySQL lengkap (`users`, `events`, `orders`, `tickets`, `applications`, `payment`) dengan relasi foreign key pada `database.sql`.
-- [] **Koneksi Database PDO**: Membangun `config/database.php` menggunakan PDO dengan error mode exception dan wrapper function `get_db()`.
-- [] **Sistem Autentikasi**: Membangun alur masuk dan daftar akun pada `login.php`, `register.php`, dan `proses/auth_process.php` yang mendukung case-insensitive username (`LOWER(username)`).
-- [] **Middleware & Role Restriction**: Membangun mekanisme proteksi akses di `includes/auth_check.php` dengan fungsi `require_login()`, `require_role('admin')`, `require_role('organizer')`, dan `current_user()`.
-- [] **Global Helper & Session Flash**: Mengembangkan sistem notifikasi pesan di `includes/functions.php` (`set_flash()`, `get_flash()`) serta fungsi utilitas `format_rupiah()` dan `format_tanggal_id()`.
-- [] **Pembersihan Sesi**: Mengimplementasikan `logout.php` yang menghapus sesi secara aman dan mengarahkan kembali ke beranda.
+- [x] **Arsitektur Database**: Merancang skema tabel MySQL lengkap (`users`, `events`, `orders`, `tickets`, `applications`, `payment`) dengan relasi foreign key pada `database.sql`.
+- [x] **Koneksi Database PDO**: Membangun `config/database.php` menggunakan PDO dengan error mode exception dan wrapper function `get_db()`.
+- [x] **Sistem Autentikasi**: Membangun alur masuk dan daftar akun pada `login.php`, `register.php`, dan `proses/auth_process.php` yang mendukung case-insensitive username (`LOWER(username)`).
+- [x] **Middleware & Role Restriction**: Membangun mekanisme proteksi akses di `includes/auth_check.php` dengan fungsi `require_login()`, `require_role('admin')`, `require_role('organizer')`, dan `current_user()`.
+- [x] **Global Helper & Session Flash**: Mengembangkan sistem notifikasi pesan di `includes/functions.php` (`set_flash()`, `get_flash()`) serta fungsi utilitas `format_rupiah()` dan `format_tanggal_id()`.
+- [x] **Pembersihan Sesi**: Mengimplementasikan `logout.php` yang menghapus sesi secara aman dan mengarahkan kembali ke beranda.
 
 ---
 
 ### 🟣 Assyifa — Organizer & Application Specialist (`feat/organizer-assyifa`)
-- [] **Formulir Pengajuan Organizer (`apply.php`)**: Membangun antarmuka pendaftaran calon organizer yang menginput identitas diri, nama organisasi, nomor kontak, serta form draf event pertama yang ingin diselenggarakan.
-- [] **Status Tracking Pengajuan**: Menyediakan notifikasi status peninjauan di `apply.php` (menampilkan box kuning jika pengajuan berstatus *pending*, dan box merah disertai alasan jika berstatus *rejected* dengan opsi pengajuan ulang).
-- [] **Backend Pengajuan (`proses/application_process.php` - Action `apply`)**: Memvalidasi data pendaftaran, mencegah pengajuan ganda saat masih *pending*, dan menyimpan berkas ke tabel `applications`.
-- [] **Dashboard Organizer (`organizer.php`)**: Membangun antarmuka dashboard khusus role `organizer` yang menampilkan ringkasan jumlah event aktif, total tiket terjual, dan sisa slot tiket.
-- [] **CRUD Event Organizer (`proses/event_process.php`)**: Mengimplementasikan aksi `create`, `update`, dan `delete` event yang hanya dapat dikelola oleh pemilik event tersebut (`owner_id = currentUser.id`).
-- [] **Manajemen Rekening Pembayaran (`proses/payment_process.php`)**: Membangun fitur tambah dan hapus nomor rekening bank / QRIS milik organizer pada tabel `payment` agar muncul otomatis sebagai opsi pembayaran saat pembeli memesan tiket.
-- [] **Verifikasi Order Masuk**: Mengembangkan tabel riwayat pesanan tiket masuk di dashboard organizer untuk memantau nama pembeli, jumlah tiket, dan memperbarui status order.
+- [x] **Formulir Pengajuan Organizer (`apply.php`)**: Membangun antarmuka pendaftaran calon organizer yang menginput identitas diri, nama organisasi, nomor kontak, serta form draf event pertama yang ingin diselenggarakan.
+- [x] **Status Tracking Pengajuan**: Menyediakan notifikasi status peninjauan di `apply.php` (menampilkan box kuning jika pengajuan berstatus *pending*, dan box merah disertai alasan jika berstatus *rejected* dengan opsi pengajuan ulang).
+- [x] **Backend Pengajuan (`proses/application_process.php` - Action `apply`)**: Memvalidasi data pendaftaran, mencegah pengajuan ganda saat masih *pending*, dan menyimpan berkas ke tabel `applications`.
+- [x] **Dashboard Organizer (`organizer.php`)**: Membangun antarmuka dashboard khusus role `organizer` yang menampilkan ringkasan jumlah event aktif, total tiket terjual, dan sisa slot tiket.
+- [x] **CRUD Event Organizer (`proses/event_process.php`)**: Mengimplementasikan aksi `create`, `update`, dan `delete` event yang hanya dapat dikelola oleh pemilik event tersebut (`owner_id = currentUser.id`).
+- [x] **Manajemen Rekening Pembayaran (`proses/payment_process.php`)**: Membangun fitur tambah dan hapus nomor rekening bank / QRIS milik organizer pada tabel `payment` agar muncul otomatis sebagai opsi pembayaran saat pembeli memesan tiket.
+- [x] **Verifikasi Order Masuk**: Mengembangkan tabel riwayat pesanan tiket masuk di dashboard organizer untuk memantau nama pembeli, jumlah tiket, dan memperbarui status order.
 
 ---
 
 ### 🟢 Alif — Customer Experience & Ticketing Specialist (`feat/ticketing-alif`)
-- [] **Antarmuka Beranda & Navbar Publik (`index.php`, `includes/header.php`, `includes/footer.php`)**: Merancang hero section *"Satu tempat untuk semua momen"*, navigasi interaktif, dan tautan login/register dinamis sesuai status sesi user.
-- [] **Katalog & Kartu Event (`index.php`)**: Menampilkan daftar event dari database secara urut tanggal, lengkap dengan nama organizer, tanggal, jam, lokasi, badge kategori, slot tiket tersisa, dan tombol "Pesan Tiket".
-- [] **Modal Pemesanan & Alur Checkout (`index.php`)**: Membangun pop-up modal pemesanan tiket dengan batasan 1–10 tiket per transaksi, kalkulasi subtotal harga, serta pilihan metode transfer bank milik organizer dari tabel `payment` maupun QRIS.
-- [] **Upload Bukti Pembayaran (`proses/order_process.php`)**: Membangun validasi upload file bukti transfer pembayaran (pengecekan ekstensi gambar JPG/PNG/WEBP, verifikasi MIME type, batasan ukuran 5 MB, dan penyimpanan unik ke direktori `uploads/proofs/`).
-- [] **Penerbitan Kode Tiket Unik (`proses/order_process.php`)**: Mengembangkan generator kode tiket otomatis berformat unik (`TKT-YYYYMM-XXXX`) pada tabel `tickets` serta pengurangan kuota slot event secara atomik.
-- [] **Dashboard Tiket Saya (`tiket-saya.php`)**: Membangun halaman riwayat pesanan pengguna yang membagi tiket ke dalam dua tab: **Tiket Mendatang** dan **Riwayat Transaksi**.
-- [] **Tampilan Kartu Tiket & Modal Bukti Transfer (`tiket-saya.php`)**: Menampilkan detail event, kode tiket yang terbit, badge status transaksi (*Confirmed*, *Pending*, *Rejected*), dan modal interaktif untuk melihat screenshot bukti transfer yang telah diunggah.
+- [x] **Antarmuka Beranda & Navbar Publik (`index.php`, `includes/header.php`, `includes/footer.php`)**: Merancang hero section *"Satu tempat untuk semua momen"*, navigasi interaktif, dan tautan login/register dinamis sesuai status sesi user.
+- [x] **Katalog & Kartu Event (`index.php`)**: Menampilkan daftar event dari database secara urut tanggal, lengkap dengan nama organizer, tanggal, jam, lokasi, badge kategori, slot tiket tersisa, dan tombol "Pesan Tiket".
+- [x] **Modal Pemesanan & Alur Checkout (`index.php`)**: Membangun pop-up modal pemesanan tiket dengan batasan 1–10 tiket per transaksi, kalkulasi subtotal harga, serta pilihan metode transfer bank milik organizer dari tabel `payment` maupun QRIS.
+- [x] **Upload Bukti Pembayaran (`proses/order_process.php`)**: Membangun validasi upload file bukti transfer pembayaran (pengecekan ekstensi gambar JPG/PNG/WEBP, verifikasi MIME type, batasan ukuran 5 MB, dan penyimpanan unik ke direktori `uploads/proofs/`).
+- [x] **Penerbitan Kode Tiket Unik (`proses/order_process.php`)**: Mengembangkan generator kode tiket otomatis berformat unik (`TKT-YYYYMM-XXXX`) pada tabel `tickets` serta pengurangan kuota slot event secara atomik.
+- [x] **Dashboard Tiket Saya (`tiket-saya.php`)**: Membangun halaman riwayat pesanan pengguna yang membagi tiket ke dalam dua tab: **Tiket Mendatang** dan **Riwayat Transaksi**.
+- [x] **Tampilan Kartu Tiket & Modal Bukti Transfer (`tiket-saya.php`)**: Menampilkan detail event, kode tiket yang terbit, badge status transaksi (*Confirmed*, *Pending*, *Rejected*), dan modal interaktif untuk melihat screenshot bukti transfer yang telah diunggah.
 
 ---
 
 ### 🟠 Faiz — Administration & Governance Specialist (`feat/admin-faiz`)
-- [] **Dashboard Utama Admin (`admin.php`)**: Membangun panel kendali yang hanya dapat diakses oleh role `admin`, dilengkapi 3 kartu ringkasan metrik: Total Akun Terdaftar, Pengajuan Menunggu Persetujuan, dan Total Event Tayang.
-- [] **Sistem Peninjauan Pengajuan Organizer (`admin.php`)**: Menyediakan daftar seluruh calon organizer yang mendaftar beserta detail organisasi, kontak pemohon, dan spesifikasi draf event perdananya.
-- [] **Logika Keputusan Admin (`proses/application_process.php` - Action `decide`)**:
+- [x] **Dashboard Utama Admin (`admin.php`)**: Membangun panel kendali yang hanya dapat diakses oleh role `admin`, dilengkapi 3 kartu ringkasan metrik: Total Akun Terdaftar, Pengajuan Menunggu Persetujuan, dan Total Event Tayang.
+- [x] **Sistem Peninjauan Pengajuan Organizer (`admin.php`)**: Menyediakan daftar seluruh calon organizer yang mendaftar beserta detail organisasi, kontak pemohon, dan spesifikasi draf event perdananya.
+- [x] **Logika Keputusan Admin (`proses/application_process.php` - Action `decide`)**:
   - **Aksi Setujui (*Approve*)**: Menggunakan transaksi database (`beginTransaction`) untuk mengubah status pengajuan menjadi `approved`, menaikkan role user dari `user` menjadi `organizer`, memperbarui nama organisasi, dan secara otomatis langsung menerbitkan draf event pertama ke tabel `events`.
   - **Aksi Tolak (*Reject*)**: Memvalidasi input wajib alasan penolakan dan menyimpan keterangan penolakan ke database agar calon organizer dapat membaca alasannya di `apply.php`.
-- [] **Daftar & Audit Seluruh Akun Pengguna (`admin.php`)**: Menampilkan daftar seluruh user yang terdaftar di platform Tiketin beserta badge role masing-masing (`Admin`, `Organizer`, `User`) dan tanggal registrasi.
-- [] **Moderasi Event Global (`admin.php` & `proses/event_process.php`)**:
+- [x] **Daftar & Audit Seluruh Akun Pengguna (`admin.php`)**: Menampilkan daftar seluruh user yang terdaftar di platform Tiketin beserta badge role masing-masing (`Admin`, `Organizer`, `User`) dan tanggal registrasi.
+- [x] **Moderasi Event Global (`admin.php` & `proses/event_process.php`)**:
   - Menyediakan form edit event interaktif langsung di halaman admin untuk mengubah nama, jadwal, lokasi, kategori, harga, dan kuota event yang melanggar ketentuan.
   - Menyediakan tombol hapus event dengan konfirmasi dialog untuk menjaga ketertiban konten di platform Tiketin.
 
