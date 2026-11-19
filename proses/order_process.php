@@ -129,12 +129,16 @@ try {
     $pdo->beginTransaction();
 
     // Kunci baris event dulu biar stok tiket aman dari double booking
-    $stmtEvent = $pdo->prepare("SELECT id, name, price, slots FROM events WHERE id = ? FOR UPDATE");
+    $stmtEvent = $pdo->prepare("SELECT id, name, date, time, price, slots FROM events WHERE id = ? FOR UPDATE");
     $stmtEvent->execute([$eventId]);
     $event = $stmtEvent->fetch();
 
     if (!$event) {
         throw new Exception('Event tidak ditemukan.');
+    }
+
+    if (is_event_passed($event['date'] ?? null, $event['time'] ?? null)) {
+        throw new Exception('Acara sudah berakhir dan tiket tidak lagi tersedia.');
     }
 
     if ($event['slots'] < $quantity) {

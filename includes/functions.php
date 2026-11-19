@@ -1,6 +1,10 @@
 <?php
 // Kumpulan helper umum untuk format data, sanitasi, upload foto event, dan fallback SVG
 
+if (function_exists('date_default_timezone_set')) {
+    date_default_timezone_set('Asia/Jakarta');
+}
+
 // Ubah angka jadi format Rupiah
 function format_rupiah($amount): string
 {
@@ -441,4 +445,129 @@ function render_card_meta_icon(string $name, int $size = 14): string
         return '';
     }
     return '<svg class="meta-svg-icon" width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $inner . '</svg>';
+}
+
+// Parse tanggal + jam acara ke DateTimeImmutable (Asia/Jakarta); jam default 23:59 jika kosong/tidak valid
+function parse_event_datetime(?string $dateStr, ?string $timeStr): ?DateTimeImmutable
+{
+    if ($dateStr === null) {
+        return null;
+    }
+    $trimmed = trim($dateStr);
+    if ($trimmed === '') {
+        return null;
+    }
+    if (strlen($trimmed) > 10) {
+        $trimmed = substr($trimmed, 0, 10);
+    }
+
+    $tz = new DateTimeZone('Asia/Jakarta');
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $trimmed, $tz);
+    if ($dt === false || $dt->format('Y-m-d') !== $trimmed) {
+        return null;
+    }
+
+    $hour = 23;
+    $minute = 59;
+    if ($timeStr !== null && trim($timeStr) !== '' && preg_match('/(\d{1,2})[:.](\d{2})/', $timeStr, $m)) {
+        $h = (int)$m[1];
+        $min = (int)$m[2];
+        if ($h >= 0 && $h <= 23 && $min >= 0 && $min <= 59) {
+            $hour = $h;
+            $minute = $min;
+        }
+    }
+
+    return $dt->setTime($hour, $minute, 0);
+}
+
+// Cek apakah waktu pelaksanaan event sudah terlewat terhadap waktu referensi (default sekarang WIB)
+function is_event_passed(?string $dateStr, ?string $timeStr, ?DateTimeImmutable $referenceNow = null): bool
+{
+    $eventDt = parse_event_datetime($dateStr, $timeStr);
+    if ($eventDt === null) {
+        return false;
+    }
+    $now = $referenceNow ?? new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
+    return $now > $eventDt;
+}
+
+// Klasifikasi status event menjadi 3 tingkat: 0 = Aktif, 1 = Habis, 2 = Berakhir
+function get_event_status_info(array $event, ?DateTimeImmutable $referenceNow = null): array
+{
+    $isExpired = is_event_passed($event['date'] ?? null, $event['time'] ?? null, $referenceNow);
+    if ($isExpired) {
+        return [
+            'key' => 'berakhir',
+            'label' => 'Berakhir',
+            'tier' => 2,
+            'is_expired' => true,
+            'is_sold_out' => true,
+        ];
+    }
+
+    $slots = (int)($event['slots'] ?? 0);
+    if ($slots <= 0) {
+        return [
+            'key' => 'habis',
+            'label' => 'Habis',
+            'tier' => 1,
+            'is_expired' => false,
+            'is_sold_out' => true,
+        ];
+    }
+
+    return [
+        'key' => 'aktif',
+        'label' => 'Aktif',
+        'tier' => 0,
+        'is_expired' => false,
+        'is_sold_out' => false,
+    ];
+}
+
+// Urutkan event 3 tingkat: Aktif (terdekat ASC) -> Habis (terdekat ASC) -> Berakhir (terbaru DESC)
+function sort_events_by_priority(array $events, ?DateTimeImmutable $referenceNow = null): array
+{
+    $now = $referenceNow ?? new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
+    $list = array_values($events);
+    usort($list, static function (array $a, array $b) use ($now): int {
+        $stA = get_event_status_info($a, $now);
+        $stB = get_event_status_info($b, $now);
+        if ($stA['tier'] !== $stB['tier']) {
+            return $stA['tier'] <=> $stB['tier'];
+        }
+
+        $dtA = parse_event_datetime($a['date'] ?? null, $a['time'] ?? null);
+        $dtB = parse_event_datetime($b['date'] ?? null, $b['time'] ?? null);
+        if ($dtA === null && $dtB === null) {
+            return ((int)($b['id'] ?? 0)) <=> ((int)($a['id'] ?? 0));
+        }
+        if ($dtA === null) {
+            return 1;
+        }
+        if ($dtB === null) {
+            return -1;
+        }
+
+        $cmp = ($stA['is_expired'] && $stB['is_expired'])
+            ? ($dtB <=> $dtA)
+            : ($dtA <=> $dtB);
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        return ((int)($b['id'] ?? 0)) <=> ((int)($a['id'] ?? 0));
+    });
+    return $list;
+}
+
+// Saring event yang belum berakhir dan urutkan: Aktif -> Habis
+function filter_and_sort_active_events(array $events, ?DateTimeImmutable $referenceNow = null): array
+{
+    $now = $referenceNow ?? new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
+    $active = array_filter(
+        $events,
+        static fn(array $ev): bool => !is_event_passed($ev['date'] ?? null, $ev['time'] ?? null, $now)
+    );
+    return sort_events_by_priority($active, $now);
 }

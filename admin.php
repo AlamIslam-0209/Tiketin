@@ -12,6 +12,7 @@ $bodyDataDashboard = 'admin';
 $users = [];
 $applications = [];
 $events = [];
+$eventNow = new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
 
 if (isset($pdo)) {
     try {
@@ -27,7 +28,7 @@ if (isset($pdo)) {
             LEFT JOIN users u ON e.owner_id = u.id 
             ORDER BY e.date ASC
         ");
-        $events = $stmtEvents->fetchAll();
+        $events = sort_events_by_priority($stmtEvents->fetchAll(), $eventNow);
     } catch (Exception $e) {
         $users = [];
         $applications = [];
@@ -252,8 +253,9 @@ require_once __DIR__ . '/includes/header.php';
                 <?php foreach ($events as $evt):
                     $evtImageUrl = resolve_event_image_url($evt['image_path'] ?? null);
                     $evtPayload = array_merge($evt, ['imageUrl' => $evtImageUrl]);
+                    $statusInfo = get_event_status_info($evt, $eventNow);
                 ?>
-                    <article class="management-row">
+                    <article class="management-row<?= $statusInfo['is_expired'] ? ' is-expired' : '' ?>">
                         <?php if ($evtImageUrl): ?>
                             <button type="button"
                                     class="management-thumb-16x9 is-zoomable"
@@ -267,7 +269,10 @@ require_once __DIR__ . '/includes/header.php';
                             </div>
                         <?php endif; ?>
                         <div class="management-copy">
-                            <h3><?= htmlspecialchars($evt['name']) ?></h3>
+                            <div class="management-title-row">
+                                <h3><?= htmlspecialchars($evt['name']) ?></h3>
+                                <span class="badge badge-event-<?= htmlspecialchars($statusInfo['key']) ?>"><?= htmlspecialchars($statusInfo['label']) ?></span>
+                            </div>
                             <p>
                                 📅 <?= format_tanggal_id($evt['date']) ?><?= !empty($evt['time']) ? ' · 🕒 ' . htmlspecialchars($evt['time']) : '' ?> · 
                                 <?= format_rupiah($evt['price']) ?> · 

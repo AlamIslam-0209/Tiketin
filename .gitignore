@@ -11,3 +11,5 @@ doc/
 
 uploads/proofs/*
 !uploads/proofs/.gitkeep
+
+target/

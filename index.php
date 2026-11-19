@@ -8,10 +8,11 @@ $activeNav = 'home';
 
 $events = [];
 $organizerPayments = [];
+$eventNow = new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
 if (isset($pdo)) {
     try {
         $stmt = $pdo->query("SELECT e.*, u.organization, u.full_name AS organizer_name FROM events e LEFT JOIN users u ON e.owner_id = u.id ORDER BY e.date ASC");
-        $events = $stmt->fetchAll();
+        $events = filter_and_sort_active_events($stmt->fetchAll(), $eventNow);
 
         // Peta rekening aktif per organizer biar langsung tampil di modal bayar
         $stmtPay = $pdo->query("SELECT * FROM payment WHERE is_active = 1 ORDER BY id ASC");
@@ -140,7 +141,7 @@ require_once __DIR__ . '/includes/header.php';
                     $imageUrl = resolve_event_image_url($event['image_path'] ?? null);
                     $fallbackSvgUrl = get_category_svg_data_uri($category);
                 ?>
-                    <article class="ticket-card has-media" 
+                    <article class="ticket-card has-media<?= !$isAvailable ? ' is-sold-out' : '' ?>" 
                              data-name="<?= htmlspecialchars(strtolower($event['name'])) ?>" 
                              data-location="<?= htmlspecialchars(strtolower($eventLocation)) ?>"
                              data-category="<?= htmlspecialchars($filterCategory) ?>">
@@ -162,6 +163,11 @@ require_once __DIR__ . '/includes/header.php';
                                     <span class="cat-dot dot-<?= $catKey ?>" aria-hidden="true"></span>
                                     <span><?= htmlspecialchars($category) ?></span>
                                 </span>
+                                <?php if (!$isAvailable): ?>
+                                    <span class="media-status-pill is-sold-out">Habis</span>
+                                <?php elseif ($slots <= 10): ?>
+                                    <span class="media-status-pill is-low-stock">Sisa <?= $slots ?> tiket</span>
+                                <?php endif; ?>
                             </div>
                             <?php if ($imageUrl): ?>
                                 <span class="media-zoom-badge" aria-hidden="true">

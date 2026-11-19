@@ -11,16 +11,20 @@ $bodyDataDashboard = 'organizer';
 
 $myEvents = [];
 $myOrders = [];
+$myPayments = [];
 $totalSlots = 0;
+$eventNow = new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
 
 if (isset($pdo)) {
     try {
         $stmtEvents = $pdo->prepare("SELECT * FROM events WHERE owner_id = ? ORDER BY date ASC");
         $stmtEvents->execute([$currentUser['id']]);
-        $myEvents = $stmtEvents->fetchAll();
+        $myEvents = sort_events_by_priority($stmtEvents->fetchAll(), $eventNow);
 
         foreach ($myEvents as $evt) {
-            $totalSlots += (int)$evt['slots'];
+            if (!is_event_passed($evt['date'] ?? null, $evt['time'] ?? null, $eventNow)) {
+                $totalSlots += (int)$evt['slots'];
+            }
         }
 
         $stmtOrders = $pdo->prepare("
@@ -160,8 +164,9 @@ require_once __DIR__ . '/includes/header.php';
                     <?php foreach ($myEvents as $event):
                         $imageUrl = resolve_event_image_url($event['image_path'] ?? null);
                         $eventPayload = array_merge($event, ['imageUrl' => $imageUrl]);
+                        $statusInfo = get_event_status_info($event, $eventNow);
                     ?>
-                        <article class="management-row">
+                        <article class="management-row<?= $statusInfo['is_expired'] ? ' is-expired' : '' ?>">
                             <?php if ($imageUrl): ?>
                                 <button type="button"
                                         class="management-thumb-16x9 is-zoomable"
@@ -175,7 +180,10 @@ require_once __DIR__ . '/includes/header.php';
                                 </div>
                             <?php endif; ?>
                             <div class="management-copy">
-                                <h3><?= htmlspecialchars($event['name']) ?></h3>
+                                <div class="management-title-row">
+                                    <h3><?= htmlspecialchars($event['name']) ?></h3>
+                                    <span class="badge badge-event-<?= htmlspecialchars($statusInfo['key']) ?>"><?= htmlspecialchars($statusInfo['label']) ?></span>
+                                </div>
                                 <p>
                                     📅 <?= format_tanggal_id($event['date']) ?><?= !empty($event['time']) ? ' · 🕒 ' . htmlspecialchars($event['time']) : '' ?> · 
                                     <?= format_rupiah($event['price']) ?> · 

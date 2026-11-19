@@ -530,6 +530,14 @@ h1 span { color: var(--coral); }
   box-shadow: var(--shadow);
 }
 
+.ticket-card.is-sold-out {
+  border-color: #e6e8e4;
+}
+
+.ticket-card.is-sold-out .card-media-16x9 img {
+  opacity: 0.84;
+}
+
 .featured-card {
   background: var(--soft-coral);
   border-color: #f7d5cc;
@@ -1126,6 +1134,35 @@ body[data-dashboard="organizer"] .dashboard-summary {
   font-size: 1rem;
 }
 
+.management-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.management-title-row h3 {
+  margin: 0;
+}
+
+.management-row.is-expired {
+  background: #f7f8f6;
+  border-color: #e8eae6;
+}
+
+.management-row.is-expired .management-thumb-16x9 {
+  opacity: 0.58;
+}
+
+.management-row.is-expired .management-copy {
+  opacity: 0.72;
+}
+
+.management-row.is-expired .row-actions {
+  opacity: 1;
+}
+
 .management-copy p,
 .application-row p {
   margin: 0;
@@ -1564,6 +1601,9 @@ body[data-dashboard="organizer"] .dashboard-summary {
 .badge-menunggu   { background: #fff4dc; color: #805b16; }
 .badge-berhasil   { background: #edf7eb; color: #386834; }
 .badge-dibatalkan { background: var(--soft-coral); color: var(--coral-dark); }
+.badge-event-aktif    { background: #dcfce7; color: #15803d; }
+.badge-event-habis    { background: #fee2e2; color: #b91c1c; }
+.badge-event-berakhir { background: #f1f5f9; color: #475569; }
 
 /* ── Order filter bar ── */
 
@@ -1666,9 +1706,34 @@ body[data-dashboard="organizer"] .dashboard-summary {
   right: 10px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 8px;
   pointer-events: none;
+}
+
+.media-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 10px rgba(20, 23, 26, 0.14);
+}
+
+.media-status-pill.is-sold-out {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.media-status-pill.is-low-stock {
+  background: #fff4dc;
+  border-color: #fde68a;
+  color: #805b16;
 }
 
 .media-cat-pill {
