@@ -1,40 +1,37 @@
-# Tiketin Desktop
+# Tiketin Desktop — JavaFX 21 Edition
 
-Aplikasi desktop pemesanan dan pengelolaan tiket event berbasis **Java 17 (Swing + FlatLaf)** yang terhubung ke database MySQL (`tiketin_db2`).
+Aplikasi desktop pemesanan dan pengelolaan tiket acara berbasis **Java 17 & JavaFX 21** lintas platform (**macOS Apple Silicon, macOS Intel, Windows, Linux**) yang terhubung langsung ke MySQL (`tiketin_db2`).
 
 ## Fitur Utama
 
-- **Guest & Pembeli:** Jelajah katalog event, pencarian dan filter kategori, pemesanan tiket 2 langkah dengan kalkulasi subtotal otomatis, pembayaran transfer bank atau QRIS, upload bukti bayar (klik pemilih file OS atau *Drag & Drop* + pratinjau gambar), serta halaman **Tiket Saya** (tab *Mendatang* & *Riwayat* lengkap dengan kode tiket dan pratinjau bukti bayar).
-- **Pengajuan Organizer:** Pengguna biasa dapat mengajukan diri menjadi organizer beserta draf event perdana, dengan pelacakan status (*Proses*, *Ditolak* beserta alasan, *Disetujui*).
-- **Dashboard Organizer:** Ringkasan metrik, CRUD event, verifikasi pesanan masuk (setujui / batalkan dengan pengembalian kuota otomatis dan pratinjau bukti bayar), serta manajemen rekening pembayaran.
-- **Panel Admin:** Ringkasan statistik, peninjauan pengajuan organizer (*Setujui* / *Tolak* dengan alasan), daftar pengguna, dan moderasi seluruh event.
+- **Jelajah Acara & Filter Spesifik:** Katalog kartu **4:3 foto event** responsif, *command search bar* (`⌘K` / `Ctrl+K`), tab kategori, urutkan jadwal/harga/kuota, serta modal filter rentang tanggal, harga, kota/venue, penyelenggara, dan kuota tersedia.
+- **Pemesanan 1-Frame 2 Kolom & QRIS:** Halaman `Pesan Tiket` menampilkan detail acara + pratinjau poster 4:3 (*lightbox* saat diklik) di kiri, serta ringkasan pesanan, **QR Code dinamis** untuk QRIS, metode transfer bank, dan *Drag & Drop* / pilih file bukti bayar di kanan.
+- **Tiket Saya & Status Terpakai Otomatis:** Filter status `Menunggu`, `Berhasil`, **`Terpakai`** (otomatis ketika tanggal dan jam acara terlewati), dan `Dibatalkan`, salin kode tiket cepat, serta pratinjau bukti bayar.
+- **Autentikasi & Pengaturan Akun 1-Frame:** Masuk/Daftar di halaman tersendiri dan edit profil beserta unggah avatar dari menu Pengaturan tanpa membuka jendela terpisah.
+- **Studio Organizer & Pengajuan:** Form pengajuan organizer beserta unggah foto poster acara perdana, pelacakan status (*Proses* / *Ditolak* dengan alasan), manajemen acara CRUD + upload foto 4:3, akordeon verifikasi pesanan masuk, dan manajemen rekening transfer/QRIS berdampingan 2 kolom.
+- **Pusat Admin & Governance:** Review & persetujuan pengajuan organizer beserta pratinjau foto proposal, direktori pengguna (*read-only* demi keamanan role), dan moderasi acara global.
 
 ## Prasyarat
 
-- **Java 17** atau lebih baru (JRE/JDK)
-- **MySQL / MariaDB** berjalan di `127.0.0.1:3306` dengan database `tiketin_db2` (konfigurasi dapat disesuaikan di `src/main/resources/database.properties`)
-- *(Opsional)* **Apache Maven 3.8+** jika ingin melakukan kompilasi ulang dari source
+- **JDK 17+**
+- **Apache Maven 3.8+**
+- **MySQL / MariaDB** berjalan di `127.0.0.1:3306` dengan database `tiketin_db2` (konfigurasi di `src/main/resources/database.properties`)
 
 ## Cara Menjalankan
 
-### macOS / Linux
+### macOS (Klik Ganda atau Terminal)
+Klik ganda **`run.command`** di Finder atau jalankan di terminal:
 ```bash
 ./run.sh
 ```
-khusus macOS bisa klik 2 kali run.command
 
 ### Windows
-Klik dua kali `run.bat` atau jalankan lewat CMD/PowerShell:
+Klik ganda **`run.bat`** atau jalankan lewat CMD/PowerShell:
 ```bat
 run.bat
 ```
 
-### Langsung via Java JAR
+### Langsung via Maven
 ```bash
-java -jar target/tiketin-desktop-2.0.0-jar-with-dependencies.jar
-```
-
-### Build Ulang dari Source (Opsional)
-```bash
-mvn clean package
+mvn javafx:run
 ```

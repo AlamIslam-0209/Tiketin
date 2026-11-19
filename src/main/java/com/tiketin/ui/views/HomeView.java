@@ -10,6 +10,7 @@ import com.tiketin.ui.components.PageHeaderPanel;
 import com.tiketin.ui.theme.TiketinIcons;
 import com.tiketin.ui.theme.TiketinTheme;
 import com.tiketin.util.DateUtil;
+import com.tiketin.util.EventSortUtil;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
@@ -19,7 +20,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 
 import java.time.LocalDate;
-import java.util.Comparator;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -537,7 +538,8 @@ public class HomeView extends StackPane {
     private void filterAndRender() {
         String query = searchBar.getText() != null ? searchBar.getText().toLowerCase().trim() : "";
         String sortOption = sortCombo.getValue();
-        LocalDate now = LocalDate.now();
+        LocalDateTime nowDt = LocalDateTime.now();
+        LocalDate now = nowDt.toLocalDate();
 
         List<Event> filtered = allEvents.stream().filter(ev -> {
             // Category filter
@@ -547,10 +549,8 @@ public class HomeView extends StackPane {
                 }
             }
             // Availability filter
-            if (filterAvailableOnly) {
-                LocalDate evD = DateUtil.parseDateSafe(ev.getDate());
-                boolean isExpired = evD != null && evD.isBefore(now);
-                if (ev.getSlots() <= 0 || isExpired) return false;
+            if (filterAvailableOnly && !EventSortUtil.isAvailable(ev, nowDt)) {
+                return false;
             }
             // Date filter
             if (!"Semua Tanggal".equals(filterDateMode)) {
@@ -603,16 +603,8 @@ public class HomeView extends StackPane {
             return true;
         }).collect(Collectors.toList());
 
-        // Sorting
-        if ("Tanggal terdekat".equals(sortOption)) {
-            filtered.sort(Comparator.comparing(Event::getDate, Comparator.nullsLast(Comparator.naturalOrder())));
-        } else if ("Harga terendah".equals(sortOption)) {
-            filtered.sort(Comparator.comparingInt(Event::getPrice));
-        } else if ("Harga tertinggi".equals(sortOption)) {
-            filtered.sort((a, b) -> Integer.compare(b.getPrice(), a.getPrice()));
-        } else if ("Kuota terbanyak".equals(sortOption)) {
-            filtered.sort((a, b) -> Integer.compare(b.getSlots(), a.getSlots()));
-        }
+        // Sorting — 3-tier priority (Aktif -> Habis -> Berakhir) is always preserved
+        filtered.sort(EventSortUtil.homeComparator(sortOption, nowDt));
 
         currentFilteredEvents = filtered;
         resultCountLabel.setText(filtered.size() + " acara ditemukan");

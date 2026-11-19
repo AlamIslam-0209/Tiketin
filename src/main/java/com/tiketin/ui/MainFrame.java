@@ -2,6 +2,7 @@ package com.tiketin.ui;
 
 import com.tiketin.model.Event;
 import com.tiketin.model.User;
+import com.tiketin.ui.components.EventImageSupport;
 import com.tiketin.ui.components.SidebarPanel;
 import com.tiketin.ui.components.ToastNotification;
 import com.tiketin.ui.theme.TiketinIcons;
@@ -10,11 +11,23 @@ import com.tiketin.ui.views.*;
 import com.tiketin.util.DateUtil;
 import com.tiketin.util.SessionManager;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -290,7 +303,63 @@ public class MainFrame extends StackPane {
     }
 
     public void showImageLightbox(String storedPath, String title) {
-        ToastNotification.info(this, "Pratinjau foto ukuran penuh belum tersedia.");
+        if (storedPath == null || storedPath.trim().isEmpty()) return;
+        Image img = EventImageSupport.loadStoredEventImage(storedPath.trim(), 1800, 1350);
+        if (img == null) return;
+
+        StackPane backdrop = new StackPane();
+        backdrop.setStyle("-fx-background-color: rgba(24, 24, 27, 0.72);");
+        backdrop.setPadding(new Insets(28));
+        backdrop.setOnMouseClicked(e -> closeImageLightbox());
+
+        VBox modalCard = new VBox(14);
+        modalCard.setMaxWidth(880);
+        modalCard.setMaxHeight(680);
+        modalCard.setPadding(new Insets(18));
+        modalCard.setStyle(
+                "-fx-background-color: #FFFFFF; -fx-background-radius: 16; " +
+                "-fx-border-color: #E3E6E2; -fx-border-radius: 16; -fx-border-width: 1; " +
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 28, 0, 0, 10);"
+        );
+        modalCard.setOnMouseClicked(e -> e.consume());
+
+        HBox topBar = new HBox(10);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        Label titleLbl = new Label(title != null && !title.isBlank() ? title : "Foto Acara");
+        titleLbl.setFont(TiketinTheme.fontBold(15));
+        titleLbl.setStyle("-fx-text-fill: #20252A;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button closeBtn = TiketinTheme.createSquareIconButton("close", 34, "Tutup pratinjau");
+        closeBtn.setOnAction(e -> closeImageLightbox());
+        topBar.getChildren().addAll(titleLbl, spacer, closeBtn);
+
+        StackPane stageFrame = new StackPane();
+        stageFrame.setMinHeight(420);
+        stageFrame.setPrefHeight(520);
+        VBox.setVgrow(stageFrame, Priority.ALWAYS);
+        stageFrame.setStyle("-fx-background-color: " + EventImageSupport.MATTE_BG_HEX + "; -fx-background-radius: 12; -fx-border-color: #E3E6E2; -fx-border-radius: 12;");
+        EventImageSupport.applyRoundedClip(stageFrame, 11);
+
+        ImageView fullView = EventImageSupport.createFittedImageView(stageFrame, 16);
+        fullView.setImage(img);
+        stageFrame.getChildren().add(fullView);
+
+        modalCard.getChildren().addAll(topBar, stageFrame);
+        backdrop.getChildren().add(modalCard);
+
+        modalOverlayPane.getChildren().setAll(backdrop);
+        modalOverlayPane.setManaged(true);
+        modalOverlayPane.setVisible(true);
+        modalOverlayPane.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) {
+                closeImageLightbox();
+                e.consume();
+            }
+        });
+        Platform.runLater(modalOverlayPane::requestFocus);
     }
 
     public void registerSearchFocusHandler(String viewKey, Runnable focusHandler) {

@@ -15,6 +15,7 @@ import com.tiketin.ui.theme.TiketinIcons;
 import com.tiketin.ui.theme.TiketinTheme;
 import com.tiketin.util.CurrencyUtil;
 import com.tiketin.util.DateUtil;
+import com.tiketin.util.EventSortUtil;
 import com.tiketin.util.SessionManager;
 import com.tiketin.util.ValidationUtil;
 import javafx.geometry.Insets;
@@ -23,8 +24,11 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Pure JavaFX VBox studio dashboard for organizer events, order verification, and bank/QRIS accounts.
@@ -344,12 +348,14 @@ public class OrganizerDashboardView extends VBox {
     private void populateEventsList(List<Event> events, String query) {
         eventsContainer.getChildren().clear();
         String q = query != null ? query.toLowerCase().trim() : "";
+        LocalDateTime nowDt = LocalDateTime.now();
 
         List<Event> filtered = events.stream().filter(ev -> {
             if (q.isEmpty()) return true;
             return (ev.getName() != null && ev.getName().toLowerCase().contains(q)) ||
                     (ev.getLocation() != null && ev.getLocation().toLowerCase().contains(q));
-        }).toList();
+        }).collect(Collectors.toCollection(ArrayList::new));
+        filtered.sort(EventSortUtil.defaultComparator(nowDt));
 
         if (filtered.isEmpty()) {
             VBox emptyCard = new VBox(8);
@@ -365,12 +371,32 @@ public class OrganizerDashboardView extends VBox {
         }
 
         for (Event ev : filtered) {
+            EventSortUtil.EventStatus status = EventSortUtil.getStatus(ev, nowDt);
+            boolean isExpired = (status == EventSortUtil.EventStatus.BERAKHIR);
+
             VBox card = new VBox(10);
             card.setPadding(new Insets(16, 20, 16, 20));
-            card.getStyleClass().add("card-editorial");
+            card.getStyleClass().add(isExpired ? "card-editorial-expired" : "card-editorial");
 
             HBox topRow = new HBox(14);
             topRow.setAlignment(Pos.CENTER_LEFT);
+
+            if (ev.getImagePath() != null && !ev.getImagePath().isBlank()) {
+                StackPane thumb = new StackPane();
+                thumb.setMinSize(96, 72);
+                thumb.setPrefSize(96, 72);
+                thumb.setMaxSize(96, 72);
+                thumb.setStyle("-fx-background-color: " + com.tiketin.ui.components.EventImageSupport.MATTE_BG_HEX +
+                        "; -fx-background-radius: 10; -fx-border-color: #E3E6E2; -fx-border-radius: 10;");
+                com.tiketin.ui.components.EventImageSupport.applyRoundedClip(thumb, 9);
+                javafx.scene.image.ImageView iv = com.tiketin.ui.components.EventImageSupport.createFittedImageView(thumb, 4);
+                iv.setImage(com.tiketin.ui.components.EventImageSupport.loadStoredEventImage(ev.getImagePath(), 320, 240));
+                thumb.getChildren().add(iv);
+                if (isExpired) {
+                    thumb.setOpacity(0.58);
+                }
+                topRow.getChildren().add(thumb);
+            }
 
             VBox infoBox = new VBox(6);
             HBox titleRow = new HBox(10);
@@ -379,7 +405,11 @@ public class OrganizerDashboardView extends VBox {
             nameLbl.setFont(TiketinTheme.fontBold(15));
             nameLbl.setStyle("-fx-text-fill: #20252A;");
             nameLbl.setWrapText(true);
-            titleRow.getChildren().addAll(nameLbl, TiketinTheme.createCategoryBadge(ev.getCategory()));
+            titleRow.getChildren().addAll(
+                    nameLbl,
+                    TiketinTheme.createCategoryBadge(ev.getCategory()),
+                    TiketinTheme.createStatusBadge(status.getLabel())
+            );
 
             String dateStr = DateUtil.formatTanggalId(ev.getDate());
             Label metaLbl = new Label(
@@ -393,6 +423,9 @@ public class OrganizerDashboardView extends VBox {
             metaLbl.setWrapText(true);
 
             infoBox.getChildren().addAll(titleRow, metaLbl);
+            if (isExpired) {
+                infoBox.setOpacity(0.72);
+            }
             HBox.setHgrow(infoBox, Priority.ALWAYS);
 
             HBox actionsBox = new HBox(8);

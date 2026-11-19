@@ -159,6 +159,16 @@
 .card-editorial:hover {
     -fx-border-color: #CFD4CE;
 }
+.card-editorial-expired {
+    -fx-background-color: #FAFBF9;
+    -fx-background-radius: 14px;
+    -fx-border-color: #E8EAE6;
+    -fx-border-radius: 14px;
+    -fx-border-width: 1px;
+}
+.card-editorial-expired:hover {
+    -fx-border-color: #D7DBD5;
+}
 
 .stat-card {
     -fx-background-color: #FFFFFF;
@@ -390,6 +400,18 @@
     -fx-alignment: CENTER-LEFT;
 }
 .table-row-cell:selected .table-cell {
+    -fx-text-fill: #20252A;
+}
+.table-row-cell.table-row-expired {
+    -fx-background-color: #F8F9F7;
+}
+.table-row-cell.table-row-expired .table-cell {
+    -fx-text-fill: #788088;
+}
+.table-row-cell.table-row-expired:selected {
+    -fx-background-color: #FFF0EB;
+}
+.table-row-cell.table-row-expired:selected .table-cell {
     -fx-text-fill: #20252A;
 }
 .combo-box-popup .list-view {

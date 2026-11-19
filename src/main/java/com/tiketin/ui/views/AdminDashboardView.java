@@ -17,16 +17,23 @@ import com.tiketin.ui.dialogs.RejectReasonDialog;
 import com.tiketin.ui.theme.TiketinTheme;
 import com.tiketin.util.CurrencyUtil;
 import com.tiketin.util.DateUtil;
+import com.tiketin.util.EventSortUtil;
 import com.tiketin.util.SessionManager;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -71,6 +78,8 @@ public class AdminDashboardView extends VBox {
     private TableView<Event> eventTable;
     private ObservableList<Event> eventMasterList;
     private FilteredList<Event> eventFilteredList;
+    private SortedList<Event> eventSortedList;
+    private final ObjectProperty<LocalDateTime> eventSortClock = new SimpleObjectProperty<>(LocalDateTime.now());
     private ComboBox<String> eventCategoryFilter;
 
     public AdminDashboardView(MainFrame mainFrame) {
@@ -360,10 +369,43 @@ public class AdminDashboardView extends VBox {
         });
         colCategory.setPrefWidth(110);
 
-        TableColumn<Event, String> colDate = new TableColumn<>("Jadwal");
-        colDate.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-                DateUtil.formatTanggalId(cell.getValue().getDate())
+        TableColumn<Event, String> colStatus = new TableColumn<>("Status");
+        colStatus.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                EventSortUtil.getStatus(cell.getValue(), eventSortClock.get()).getLabel()
         ));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                if (empty || status == null) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(TiketinTheme.createStatusBadge(status));
+                }
+            }
+        });
+        colStatus.setMinWidth(84);
+        colStatus.setPrefWidth(92);
+        colStatus.setMaxWidth(105);
+        colStatus.setComparator((a, b) -> Integer.compare(EventSortUtil.tierForLabel(a), EventSortUtil.tierForLabel(b)));
+
+        TableColumn<Event, Event> colDate = new TableColumn<>("Jadwal");
+        colDate.setCellValueFactory(cell -> new SimpleObjectProperty<>(cell.getValue()));
+        colDate.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Event ev, boolean empty) {
+                super.updateItem(ev, empty);
+                setText(empty || ev == null ? null : DateUtil.formatTanggalId(ev.getDate()));
+            }
+        });
+        colDate.setComparator((a, b) -> {
+            LocalDateTime dtA = a != null ? DateUtil.parseEventDateTime(a.getDate(), a.getTime()) : null;
+            LocalDateTime dtB = b != null ? DateUtil.parseEventDateTime(b.getDate(), b.getTime()) : null;
+            if (dtA == null && dtB == null) return 0;
+            if (dtA == null) return 1;
+            if (dtB == null) return -1;
+            return dtA.compareTo(dtB);
+        });
         colDate.setPrefWidth(120);
 
         TableColumn<Event, String> colLocation = new TableColumn<>("Lokasi");
@@ -380,9 +422,18 @@ public class AdminDashboardView extends VBox {
         colSlots.setCellValueFactory(new PropertyValueFactory<>("slots"));
         colSlots.setMaxWidth(70);
 
-        eventTable.getColumns().addAll(colId, colTitle, colOrg, colCategory, colDate, colLocation, colPrice, colSlots);
+        eventTable.getColumns().addAll(colId, colTitle, colOrg, colCategory, colStatus, colDate, colLocation, colPrice, colSlots);
         eventTable.setRowFactory(tv -> {
-            TableRow<Event> row = new TableRow<>();
+            TableRow<Event> row = new TableRow<>() {
+                @Override
+                protected void updateItem(Event item, boolean empty) {
+                    super.updateItem(item, empty);
+                    getStyleClass().remove("table-row-expired");
+                    if (!empty && item != null && EventSortUtil.isExpired(item, eventSortClock.get())) {
+                        getStyleClass().add("table-row-expired");
+                    }
+                }
+            };
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
                     Event ev = row.getItem();
@@ -396,7 +447,18 @@ public class AdminDashboardView extends VBox {
 
         eventMasterList = FXCollections.observableArrayList();
         eventFilteredList = new FilteredList<>(eventMasterList, p -> true);
-        eventTable.setItems(eventFilteredList);
+        eventSortedList = new SortedList<>(eventFilteredList);
+        eventSortedList.comparatorProperty().bind(Bindings.createObjectBinding(() -> {
+            LocalDateTime now = eventSortClock.get();
+            Comparator<Event> tableComp = eventTable.getComparator();
+            if (tableComp == null) {
+                return EventSortUtil.defaultComparator(now);
+            }
+            return EventSortUtil.tierComparator(now)
+                    .thenComparing(tableComp)
+                    .thenComparing(EventSortUtil.defaultWithinTierComparator(now));
+        }, eventTable.comparatorProperty(), eventSortClock));
+        eventTable.setItems(eventSortedList);
 
         box.getChildren().add(eventTable);
         return box;
@@ -502,8 +564,10 @@ public class AdminDashboardView extends VBox {
 
             @SuppressWarnings("unchecked")
             List<Event> events = data[6] != null ? (List<Event>) data[6] : List.of();
+            eventSortClock.set(LocalDateTime.now());
             eventMasterList.setAll(events);
             filterEvents();
+            eventTable.refresh();
         }, err -> {
             if (seq != loadSeq.get()) return;
             ToastNotification.error(mainFrame, "Gagal memuat data admin: " + err.getMessage());
@@ -561,6 +625,25 @@ public class AdminDashboardView extends VBox {
             proposalLbl.setWrapText(true);
 
             cardContent.getChildren().addAll(headerBox, applicantLbl, proposalLbl);
+
+            if (app.getImagePath() != null && !app.getImagePath().isBlank()) {
+                HBox appPhotoRow = new HBox(8);
+                appPhotoRow.setAlignment(Pos.CENTER_LEFT);
+                StackPane thumb = new StackPane();
+                thumb.setMinSize(96, 72);
+                thumb.setPrefSize(96, 72);
+                thumb.setMaxSize(96, 72);
+                thumb.setCursor(javafx.scene.Cursor.HAND);
+                thumb.setStyle("-fx-background-color: " + com.tiketin.ui.components.EventImageSupport.MATTE_BG_HEX +
+                        "; -fx-background-radius: 8; -fx-border-color: #E3E6E2; -fx-border-radius: 8;");
+                com.tiketin.ui.components.EventImageSupport.applyRoundedClip(thumb, 7);
+                javafx.scene.image.ImageView iv = com.tiketin.ui.components.EventImageSupport.createFittedImageView(thumb, 4);
+                iv.setImage(com.tiketin.ui.components.EventImageSupport.loadStoredEventImage(app.getImagePath(), 280, 210));
+                thumb.getChildren().add(iv);
+                thumb.setOnMouseClicked(ev -> mainFrame.showImageLightbox(app.getImagePath(), "Foto Proposal — " + app.getEventName()));
+                appPhotoRow.getChildren().add(thumb);
+                cardContent.getChildren().add(appPhotoRow);
+            }
 
             if (app.getReason() != null && !app.getReason().isBlank()) {
                 Label rejectLbl = new Label("Alasan Penolakan: " + app.getReason());

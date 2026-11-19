@@ -2,6 +2,7 @@ package com.tiketin.dao;
 
 import com.tiketin.config.DatabaseConfig;
 import com.tiketin.model.Event;
+import com.tiketin.util.EventSortUtil;
 import com.tiketin.util.SessionManager;
 import com.tiketin.util.ValidationUtil;
 
@@ -63,6 +64,7 @@ public class EventDAO {
         } catch (SQLException e) {
             System.err.println("Gagal get all published events: " + e.getMessage());
         }
+        EventSortUtil.sortDefault(list);
         return list;
     }
 
@@ -84,6 +86,7 @@ public class EventDAO {
         } catch (SQLException e) {
             System.err.println("Gagal get events by owner: " + e.getMessage());
         }
+        EventSortUtil.sortDefault(list);
         return list;
     }
 

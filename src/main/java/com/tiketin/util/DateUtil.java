@@ -56,8 +56,13 @@ public class DateUtil {
     }
 
     public static boolean isEventPassed(String dateStr, String timeStr) {
+        return isEventPassed(dateStr, timeStr, LocalDateTime.now());
+    }
+
+    public static boolean isEventPassed(String dateStr, String timeStr, LocalDateTime referenceNow) {
         LocalDateTime eventDt = parseEventDateTime(dateStr, timeStr);
-        return eventDt != null && LocalDateTime.now().isAfter(eventDt);
+        LocalDateTime now = referenceNow != null ? referenceNow : LocalDateTime.now();
+        return eventDt != null && now.isAfter(eventDt);
     }
 
     public static String formatTanggalId(String dateStr) {

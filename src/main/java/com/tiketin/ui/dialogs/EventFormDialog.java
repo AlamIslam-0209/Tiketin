@@ -3,6 +3,7 @@ package com.tiketin.ui.dialogs;
 import com.tiketin.dao.EventDAO;
 import com.tiketin.model.Event;
 import com.tiketin.ui.components.AnimatedButton;
+import com.tiketin.ui.components.EventImageUploadPanel;
 import com.tiketin.ui.components.ToastNotification;
 import com.tiketin.ui.theme.TiketinTheme;
 import com.tiketin.util.DateUtil;
@@ -62,6 +63,11 @@ public class EventFormDialog {
         VBox formContent = new VBox(14);
         formContent.setPadding(new Insets(20, 22, 20, 22));
         formContent.getStyleClass().add("card-editorial");
+
+        EventImageUploadPanel imageUploader = new EventImageUploadPanel();
+        if (existingEvent != null && existingEvent.getImagePath() != null && !existingEvent.getImagePath().isBlank()) {
+            imageUploader.setExistingFilename(existingEvent.getImagePath());
+        }
 
         TextField nameField = TiketinTheme.createTextField("Contoh: Konser Musik Senja");
         if (existingEvent != null && existingEvent.getName() != null) {
@@ -131,6 +137,7 @@ public class EventFormDialog {
         priceSlotsGrid.add(TiketinTheme.createFieldGroup("Kuota / Slot", slotsField), 1, 0);
 
         formContent.getChildren().addAll(
+                imageUploader,
                 TiketinTheme.createFieldGroup("Nama Event", nameField),
                 TiketinTheme.createFieldGroup("Kategori", categoryCombo),
                 dateTimeGrid,
@@ -183,6 +190,12 @@ public class EventFormDialog {
                 ToastNotification.error(stage, valErr);
                 return;
             }
+            if (imageUploader.isEmpty()) {
+                String imgMsg = "Foto acara wajib diunggah.";
+                imageUploader.showError(imgMsg);
+                ToastNotification.error(stage, imgMsg);
+                return;
+            }
 
             final int price = parsedPrice;
             final int slots = parsedSlots;
@@ -192,6 +205,7 @@ public class EventFormDialog {
 
             saveBtn.setDisable(true);
             TiketinTheme.runAsync(() -> {
+                String storedImage = imageUploader.commitImageToStorage();
                 EventDAO eventDAO = new EventDAO();
                 boolean ok;
                 if (isCreate) {
@@ -205,6 +219,7 @@ public class EventFormDialog {
                     ev.setPrice(price);
                     ev.setSlots(slots);
                     ev.setDescription(desc);
+                    ev.setImagePath(storedImage);
                     ok = eventDAO.createEvent(ev);
                 } else {
                     existingEvent.setName(name);
@@ -215,6 +230,7 @@ public class EventFormDialog {
                     existingEvent.setPrice(price);
                     existingEvent.setSlots(slots);
                     existingEvent.setDescription(desc);
+                    existingEvent.setImagePath(storedImage);
                     ok = eventDAO.updateEvent(existingEvent, actorId);
                 }
                 if (!ok) {
@@ -237,7 +253,7 @@ public class EventFormDialog {
 
         shell.setPrefWidth(600);
         StackPane root = new StackPane(shell);
-        Scene scene = new Scene(root, 600, 620);
+        Scene scene = new Scene(root, 600, 725);
         TiketinTheme.applyStylesheet(scene);
         stage.setScene(scene);
         stage.showAndWait();

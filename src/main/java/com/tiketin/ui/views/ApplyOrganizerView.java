@@ -5,6 +5,7 @@ import com.tiketin.model.Application;
 import com.tiketin.model.User;
 import com.tiketin.ui.MainFrame;
 import com.tiketin.ui.components.AnimatedButton;
+import com.tiketin.ui.components.EventImageUploadPanel;
 import com.tiketin.ui.components.PageHeaderPanel;
 import com.tiketin.ui.components.ToastNotification;
 import com.tiketin.ui.theme.TiketinIcons;
@@ -43,6 +44,7 @@ public class ApplyOrganizerView extends VBox {
     private TextField eventPriceField;
     private TextField eventSlotsField;
     private TextArea eventDescArea;
+    private EventImageUploadPanel eventImageUploader;
 
     private AnimatedButton submitBtn;
 
@@ -303,8 +305,15 @@ public class ApplyOrganizerView extends VBox {
         priceSlotGrid.add(TiketinTheme.createFieldGroup("Harga Tiket (Rp)", eventPriceField), 0, 0);
         priceSlotGrid.add(TiketinTheme.createFieldGroup("Kuota Tiket", eventSlotsField), 1, 0);
 
+        eventImageUploader = new EventImageUploadPanel();
+        if (latestApp != null && latestApp.getImagePath() != null && !latestApp.getImagePath().isBlank()) {
+            eventImageUploader.setExistingFilename(latestApp.getImagePath());
+        }
+        eventImageUploader.setDisabledState(isDisabled);
+
         eventCardContent.getChildren().addAll(
                 sec2Title,
+                eventImageUploader,
                 TiketinTheme.createFieldGroup("Nama Event", eventNameField),
                 dateCatGrid,
                 TiketinTheme.createFieldGroup("Waktu Event", eventTimeField),
@@ -404,6 +413,12 @@ public class ApplyOrganizerView extends VBox {
             ToastNotification.error(mainFrame, "Harga dan Kuota harus berupa angka!");
             return;
         }
+        if (eventImageUploader == null || eventImageUploader.isEmpty()) {
+            String msg = "Foto acara wajib diunggah.";
+            if (eventImageUploader != null) eventImageUploader.showError(msg);
+            ToastNotification.error(mainFrame, msg);
+            return;
+        }
 
         Application app = new Application();
         app.setUserId(user.getId());
@@ -421,6 +436,7 @@ public class ApplyOrganizerView extends VBox {
 
         submitBtn.setDisable(true);
         TiketinTheme.runAsync(() -> {
+            app.setImagePath(eventImageUploader.commitImageToStorage());
             new ApplicationDAO().submitApplication(app);
             return true;
         }, success -> {

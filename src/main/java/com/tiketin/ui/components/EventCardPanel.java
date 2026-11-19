@@ -6,6 +6,7 @@ import com.tiketin.ui.theme.TiketinIcons;
 import com.tiketin.ui.theme.TiketinTheme;
 import com.tiketin.util.CurrencyUtil;
 import com.tiketin.util.DateUtil;
+import com.tiketin.util.EventSortUtil;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -13,11 +14,11 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
-
-import java.time.LocalDate;
 
 public class EventCardPanel extends VBox {
     private static final double DEFAULT_BANNER_HEIGHT = 204.0;
@@ -35,65 +36,79 @@ public class EventCardPanel extends VBox {
         this.event = event;
         this.onBooked = onBooked;
 
+        boolean isExpired = EventSortUtil.isExpired(event);
+        boolean isSoldOut = event.getSlots() <= 0 || isExpired;
+
         setSpacing(0);
         setMinWidth(210);
         setPrefWidth(Region.USE_COMPUTED_SIZE);
         setMaxWidth(Double.MAX_VALUE);
-        getStyleClass().add("card-editorial");
+        getStyleClass().add(isExpired ? "card-editorial-expired" : "card-editorial");
 
         String category = event.getCategory() != null && !event.getCategory().isBlank() ? event.getCategory().trim() : "Umum";
         String catLower = category.toLowerCase();
 
-        // Wave 1: Responsive 4:3 Category Vector Banner on Top (upgraded to real 4:3 photo in Wave 2)
+        // Responsive 4:3 Non-Cropped Image / Vector Fallback Banner on Top
         StackPane bannerPane = new StackPane();
         bannerPane.setMinWidth(0);
         bannerPane.setPrefWidth(0);
         bannerPane.setMaxWidth(Double.MAX_VALUE);
-        bannerPane.setMinHeight(DEFAULT_BANNER_HEIGHT);
-        bannerPane.setPrefHeight(DEFAULT_BANNER_HEIGHT);
-        bannerPane.setMaxHeight(DEFAULT_BANNER_HEIGHT);
-        bannerPane.widthProperty().addListener((obs, oldW, newW) -> {
-            double w = newW != null ? newW.doubleValue() : 0;
-            if (w <= 20) return;
-            double target = Math.round(Math.max(172.0, Math.min(260.0, w * 0.75)));
-            if (Math.abs(bannerPane.getPrefHeight() - target) >= 2.0) {
-                javafx.application.Platform.runLater(() -> {
-                    bannerPane.setMinHeight(target);
-                    bannerPane.setPrefHeight(target);
-                    bannerPane.setMaxHeight(target);
-                });
-            }
-        });
+        EventImageSupport.bindFourThreeHeight(bannerPane, DEFAULT_BANNER_HEIGHT, 172.0, 260.0);
 
-        bannerPane.setStyle("-fx-background-color: " + resolveBannerBg(catLower) + ";");
+        String imagePath = event.getImagePath();
+        Image coverImg = (imagePath != null && !imagePath.trim().isEmpty())
+                ? EventImageSupport.loadStoredEventImage(imagePath.trim(), 800, 600)
+                : null;
+        boolean hasPhoto = coverImg != null;
+
+        bannerPane.setStyle("-fx-background-color: " + (hasPhoto ? EventImageSupport.MATTE_BG_HEX : resolveBannerBg(catLower)) + ";");
 
         StackPane mediaHolder = new StackPane();
         mediaHolder.setMinWidth(0);
         mediaHolder.setPrefWidth(0);
         mediaHolder.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        if (isExpired) {
+            mediaHolder.setOpacity(0.58);
+        }
 
         Path topClip = new Path();
         topClip.setFill(Color.BLACK);
         topClip.setStroke(null);
         bannerPane.setClip(topClip);
 
-        Canvas bannerCanvas = new Canvas(320, DEFAULT_BANNER_HEIGHT);
-        bannerCanvas.setManaged(false);
-        mediaHolder.getChildren().add(bannerCanvas);
+        if (hasPhoto) {
+            ImageView photoView = EventImageSupport.createFittedImageView(mediaHolder, 0);
+            photoView.setImage(coverImg);
+            mediaHolder.getChildren().add(photoView);
 
-        Runnable redrawBanner = () -> {
-            double w = bannerPane.getWidth();
-            double h = bannerPane.getHeight();
-            if (w > 0 && h > 0) {
-                updateTopRoundedClipLocal(topClip, w, h, 14.0);
-                bannerCanvas.setWidth(w);
-                bannerCanvas.setHeight(h);
-                drawCategoryVectorArt(bannerCanvas.getGraphicsContext2D(), w, h, catLower);
-            }
-        };
-        bannerPane.widthProperty().addListener((obs, o, n) -> redrawBanner.run());
-        bannerPane.heightProperty().addListener((obs, o, n) -> redrawBanner.run());
-        drawCategoryVectorArt(bannerCanvas.getGraphicsContext2D(), 320, DEFAULT_BANNER_HEIGHT, catLower);
+            Runnable updateClip = () -> {
+                double w = bannerPane.getWidth();
+                double h = bannerPane.getHeight();
+                if (w > 0 && h > 0) {
+                    EventImageSupport.updateTopRoundedClip(topClip, w, h, 14.0);
+                }
+            };
+            bannerPane.widthProperty().addListener((obs, o, n) -> updateClip.run());
+            bannerPane.heightProperty().addListener((obs, o, n) -> updateClip.run());
+        } else {
+            Canvas bannerCanvas = new Canvas(320, DEFAULT_BANNER_HEIGHT);
+            bannerCanvas.setManaged(false);
+            mediaHolder.getChildren().add(bannerCanvas);
+
+            Runnable redrawBanner = () -> {
+                double w = bannerPane.getWidth();
+                double h = bannerPane.getHeight();
+                if (w > 0 && h > 0) {
+                    EventImageSupport.updateTopRoundedClip(topClip, w, h, 14.0);
+                    bannerCanvas.setWidth(w);
+                    bannerCanvas.setHeight(h);
+                    drawCategoryVectorArt(bannerCanvas.getGraphicsContext2D(), w, h, catLower);
+                }
+            };
+            bannerPane.widthProperty().addListener((obs, o, n) -> redrawBanner.run());
+            bannerPane.heightProperty().addListener((obs, o, n) -> redrawBanner.run());
+            drawCategoryVectorArt(bannerCanvas.getGraphicsContext2D(), 320, DEFAULT_BANNER_HEIGHT, catLower);
+        }
 
         // Floating Pills over Banner
         HBox topPillsRow = new HBox(8);
@@ -119,10 +134,6 @@ public class EventCardPanel extends VBox {
         Region pillSpacer = new Region();
         HBox.setHgrow(pillSpacer, Priority.ALWAYS);
 
-        LocalDate parsedDate = DateUtil.parseDateSafe(event.getDate());
-        boolean isExpired = parsedDate != null && parsedDate.isBefore(LocalDate.now());
-        boolean isSoldOut = event.getSlots() <= 0 || isExpired;
-
         HBox quotaPill = new HBox(4);
         quotaPill.setAlignment(Pos.CENTER);
         quotaPill.setPadding(new Insets(4, 10, 4, 10));
@@ -131,10 +142,14 @@ public class EventCardPanel extends VBox {
 
         Label quotaLbl = new Label();
         quotaLbl.setFont(TiketinTheme.fontBold(11.5));
-        if (isSoldOut) {
+        if (isExpired) {
+            quotaPill.setStyle("-fx-background-color: #F1F5F9; -fx-border-color: #CBD5E1; -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-width: 1;");
+            quotaLbl.setStyle("-fx-text-fill: #475569;");
+            quotaLbl.setText("Berakhir");
+        } else if (isSoldOut) {
             quotaPill.setStyle("-fx-background-color: #FEE2E2; -fx-border-color: #FCA5A5; -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-width: 1;");
             quotaLbl.setStyle("-fx-text-fill: #B91C1C;");
-            quotaLbl.setText(isExpired ? "Berakhir" : "Habis");
+            quotaLbl.setText("Habis");
         } else if (event.getSlots() <= 10) {
             quotaPill.setStyle("-fx-background-color: #FFF4DC; -fx-border-color: #FDE68A; -fx-background-radius: 999; -fx-border-radius: 999; -fx-border-width: 1;");
             quotaLbl.setStyle("-fx-text-fill: #805B16;");
@@ -154,6 +169,9 @@ public class EventCardPanel extends VBox {
         bodyContent.setMinWidth(0);
         bodyContent.setPadding(new Insets(16, 18, 18, 18));
         VBox.setVgrow(bodyContent, Priority.ALWAYS);
+        if (isExpired) {
+            bodyContent.setOpacity(0.76);
+        }
 
         Label titleLabel = new Label(event.getName() != null ? event.getName() : "Acara");
         titleLabel.setFont(TiketinTheme.fontBold(16.5));
@@ -523,19 +541,5 @@ public class EventCardPanel extends VBox {
         lbl.setTextOverrun(OverrunStyle.ELLIPSIS);
         lbl.setMaxWidth(Double.MAX_VALUE);
         return lbl;
-    }
-
-    private static void updateTopRoundedClipLocal(Path path, double w, double h, double r) {
-        path.getElements().clear();
-        double cr = Math.min(r, Math.min(w / 2.0, h / 2.0));
-        path.getElements().addAll(
-                new MoveTo(0, h),
-                new LineTo(0, cr),
-                new ArcTo(cr, cr, 0, cr, 0, false, true),
-                new LineTo(w - cr, 0),
-                new ArcTo(cr, cr, 0, w, cr, false, true),
-                new LineTo(w, h),
-                new ClosePath()
-        );
     }
 }

@@ -210,6 +210,10 @@ public class TiketinTheme {
             case "TERPAKAI":
                 return createBadge("terpakai", NEUTRAL_FG, NEUTRAL_BG);
 
+            case "BERAKHIR":
+            case "EXPIRED":
+                return createBadge(status, NEUTRAL_FG, NEUTRAL_BG);
+
             case "REJECTED":
             case "CANCELLED":
             case "FAILED":
